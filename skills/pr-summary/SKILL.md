@@ -46,10 +46,13 @@ Required on every page:
 Sections that recur — include when true:
 
 - **Journey chain** — the mechanism spans layers → trace one concrete thing end to end (HOW).
+- **Diagram / chart** — the story has a shape prose can't carry: a branching or parallel flow, a before/after topology, a state machine, numbers worth comparing (see mechanics below).
 - **Contract table** — the PR changes an API or rule → cases as rows, old/new results as columns (template has the table styles).
 - **Fit / merge order** — more than one PR → what blocks what, which debt retires when.
 - **Leftovers** — named debt or handoffs exist → each named and tracked.
 - **Security** — quiet security fixes worth remembering.
+
+Diagram mechanics: flow/sequence/state diagrams go in a `<pre class="mermaid">` block inside a card — artifacts render mermaid natively, no libraries. Charts and custom diagrams are inline SVG colored with the template's CSS variables so both themes stay legible; load the `artifact-diagramming` skill (and `dataviz` for charts) when available before drawing. The template's chain already does linear step sequences — mermaid earns its place only when the shape branches or runs parallel. External chart/diagram libraries never work: the artifact CSP blocks them.
 
 Voice: headings are theses ("A refresh token is enough authority to end its own session"), never labels ("Changes"). Review catches become "Caught in review" callouts — what was wrong, what it would have cost, the test that pins it — sourced from wherever the catch is recorded (threads, the PR description, a spec/ADR); threads are never transcribed as a comment feed. Numbers are real (file counts, test counts). Load the `ux-writing` skill for every label, heading, and one-liner.
 
@@ -66,4 +69,6 @@ Publish with the Artifact tool: title = the page's short name, favicon stable ac
 | A comments section transcribing threads | Distill catches into `Caught in review` callouts. |
 | Writing the page before reading the diff | Every claim traces to diff/description/threads; read (or abridge) first. |
 | Remote image URLs in the page | CSP blocks them — download with the PAT (or `gh`) and embed as `data:` URIs. |
+| Chart.js / D3 / any CDN script for a chart | CSP blocks external libraries — `<pre class="mermaid">` blocks and inline SVG only. |
+| Mermaid for a straight line of steps | The template's chain does linear better; mermaid is for branching/parallel shapes. |
 | `az boards` 401s while `az repos` works | PAT lacks the Work Items scope — extend it, `az devops login` again. |

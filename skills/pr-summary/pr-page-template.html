@@ -342,6 +342,19 @@
     </div>
   </section>
 
+  <!-- OPTIONAL: diagram, when the story's shape beats prose — branching or
+       parallel flow, before/after topology, state machine. Artifacts render
+       mermaid natively (no libraries). Charts/custom diagrams: inline SVG
+       colored with the CSS variables above; external chart libs are
+       CSP-blocked. Linear step sequences stay in .chain, not mermaid. -->
+  <section id="flow">
+    <h2>{{What the diagram shows}}</h2>
+    <p class="sectionsub">{{One-liner: what to look at.}}</p>
+    <div class="card">
+      <pre class="mermaid">{{MERMAID_SOURCE}}</pre>
+    </div>
+  </section>
+
   <!-- OPTIONAL (multi-PR): merge order / cross-PR contract -->
   <section id="fit">
     <h2>How the {{two}} PRs fit together</h2>
