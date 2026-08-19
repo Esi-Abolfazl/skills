@@ -54,7 +54,7 @@ Sections that recur — include when true:
 
 Diagram mechanics: flow/sequence/state diagrams go in a `<pre class="mermaid">` block inside a card — artifacts render mermaid natively, no libraries. Charts and custom diagrams are inline SVG colored with the template's CSS variables so both themes stay legible; load the `artifact-diagramming` skill (and `dataviz` for charts) when available before drawing. The template's chain already does linear step sequences — mermaid earns its place only when the shape branches or runs parallel. External chart/diagram libraries never work: the artifact CSP blocks them.
 
-Voice: headings are theses ("A refresh token is enough authority to end its own session"), never labels ("Changes"). Review catches become "Caught in review" callouts — what was wrong, what it would have cost, the test that pins it — sourced from wherever the catch is recorded (threads, the PR description, a spec/ADR); threads are never transcribed as a comment feed. Numbers are real (file counts, test counts). Load the `ux-writing` skill for every label, heading, and one-liner.
+Voice: headings are theses ("A refresh token is enough authority to end its own session"), never labels ("Changes"). Review catches become "Caught in review" callouts — what was wrong, what it would have cost, the test that pins it — sourced from wherever the catch is recorded (threads, the PR description, a spec/ADR); threads are never transcribed as a comment feed. Numbers are real (file counts, test counts). Every label, heading, and one-liner earns its place: plain words, front-loaded, no filler.
 
 Publish with the Artifact tool: title = the page's short name, favicon stable across redeploys.
 
