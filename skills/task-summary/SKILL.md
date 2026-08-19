@@ -5,7 +5,7 @@ description: Use when pulling a work item, issue, or task into the session as a 
 
 # task-summary
 
-Round-trip between the team's tracker and the session: import a work item/issue as a reviewable HTML artifact, create one from session findings, or edit an existing one. Azure DevOps and GitHub today; the same shape extends to Jira/GitLab through whatever authenticated access exists — if none exists, say so and stop rather than scraping.
+Round-trip between the team's tracker and the session: import a work item/issue as a reviewable HTML artifact, create one from session findings, or edit an existing one. Works with whatever tracker the link points at — resolve access in this order: a connected MCP server for that tracker → its CLI (`az`, `gh`, `glab`, `jira`), signed in → REST with a token from the environment. When no path works, name what's missing and ask the user how they want to connect — never scrape or guess. Azure DevOps and GitHub are the proven paths below; Jira/GitLab follow the same order.
 
 **REQUIRED BACKGROUND:** the `azure-devops` skill owns the az CLI gotchas (PAT scopes, org URL format, flag parity, HTML field behavior). Azure MCP tools (`mcp__azure-devops__*`, load via ToolSearch) come first; az CLI is the fallback when MCP is absent or a call fails.
 
@@ -76,3 +76,4 @@ Creating, editing, or commenting is visible to the whole team: show the draft an
 | Rewriting or summarizing the description in place | It renders as-is; the optional header gist is the only distillation. |
 | Markdown in Azure description fields | They are HTML; markdown shows literal `**`. (GitHub is the reverse: markdown, not HTML.) |
 | Asking which languages to include | The contract above already answers it. |
+| Refusing a link because the "right" tool is missing | Walk the access ladder (MCP → CLI → REST token); ask the user only when every path fails. |

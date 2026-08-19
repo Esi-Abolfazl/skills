@@ -15,7 +15,7 @@ The deliverable is a published artifact page, never terminal text. One page carr
 
 ## Gather
 
-Resolve the provider from the URL or context, then collect all four:
+Resolve the provider from the URL, then resolve access in this order: a connected MCP server for that provider → its CLI (`az`, `gh`, `glab`), signed in → REST with a token from the environment → plain `git` for the diff (a fetched remote needs no provider API). When no path works, name what's missing and ask the user how they want to connect — never scrape or guess. The table shows the proven paths; any other provider (GitLab, Bitbucket, …) follows the same order for the same four needs:
 
 | Need | Azure DevOps | GitHub |
 |---|---|---|
@@ -72,3 +72,4 @@ Publish with the Artifact tool: title = the page's short name, favicon stable ac
 | Chart.js / D3 / any CDN script for a chart | CSP blocks external libraries — `<pre class="mermaid">` blocks and inline SVG only. |
 | Mermaid for a straight line of steps | The template's chain does linear better; mermaid is for branching/parallel shapes. |
 | `az boards` 401s while `az repos` works | PAT lacks the Work Items scope — extend it, `az devops login` again. |
+| Refusing a link because the "right" tool is missing | Walk the access ladder (MCP → CLI → REST token → git); ask the user only when every path fails. |
