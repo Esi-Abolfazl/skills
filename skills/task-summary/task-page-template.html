@@ -1,0 +1,259 @@
+<title>{{ITEM_SHORT_NAME}}</title>
+<!--
+  Work item / issue page template. This file IS the design system — copy it,
+  fill the slots, delete unused sections and these comments. Same tokens as
+  pr-summary's pr-page-template.html, so both page kinds read as one family.
+
+  Slot legend:
+    REQUIRED  — every page has it
+    OPTIONAL  — include when the condition in its comment holds
+  These slots are the floor, not the menu: add sections for whatever else the
+  item's material offers a reader.
+  The imported description renders AS-IS inside .desc — faithful import, never
+  a rewrite. Every image (description, comments, attachments) is embedded as a
+  data: URI; remote tracker URLs are CSP-blocked and render as broken boxes.
+-->
+<style>
+  :root {
+    --paper: #f6f7f5;
+    --card: #ffffff;
+    --ink: #20272c;
+    --muted: #5c676f;
+    --line: #dde2e0;
+    --fe: #0e766e;
+    --fe-soft: #e2f1ef;
+    --be: #35569d;
+    --be-soft: #e7ecf7;
+    --warn: #96590a;
+    --warn-soft: #f7ecda;
+    --bad: #a83a50;
+    --bad-soft: #f8e7ea;
+    --good: #2e7d4f;
+    --good-soft: #e3f0e8;
+    --code-bg: #f0f2f0;
+    --shadow: 0 1px 2px rgba(32, 39, 44, 0.06), 0 4px 14px rgba(32, 39, 44, 0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #15191d;
+      --card: #1d2328;
+      --ink: #e4e9ec;
+      --muted: #9aa6ae;
+      --line: #323c43;
+      --fe: #3dbbaf;
+      --fe-soft: #14332f;
+      --be: #8aa5e8;
+      --be-soft: #1d2740;
+      --warn: #e0a458;
+      --warn-soft: #372a14;
+      --bad: #e37e91;
+      --bad-soft: #3b1e25;
+      --good: #63c08a;
+      --good-soft: #17301f;
+      --code-bg: #171c20;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #15191d;
+    --card: #1d2328;
+    --ink: #e4e9ec;
+    --muted: #9aa6ae;
+    --line: #323c43;
+    --fe: #3dbbaf;
+    --fe-soft: #14332f;
+    --be: #8aa5e8;
+    --be-soft: #1d2740;
+    --warn: #e0a458;
+    --warn-soft: #372a14;
+    --bad: #e37e91;
+    --bad-soft: #3b1e25;
+    --good: #63c08a;
+    --good-soft: #17301f;
+    --code-bg: #171c20;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.3);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Avenir Next", Seravek, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    line-height: 1.55;
+    font-size: 16px;
+  }
+  code, pre { font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace; }
+  code {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.05em 0.35em;
+    font-size: 0.86em;
+    white-space: nowrap;
+  }
+  a { color: inherit; }
+  a:focus-visible, .navchip:focus-visible { outline: 2px solid var(--fe); outline-offset: 2px; }
+
+  .wrap { max-width: 820px; margin: 0 auto; padding: 0 20px 96px; }
+
+  nav {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    padding: 10px 20px;
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+  }
+  .navchip {
+    text-decoration: none; font-size: 13px; font-weight: 600; color: var(--muted);
+    border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 4px 12px;
+  }
+  .navchip:hover { color: var(--ink); border-color: var(--muted); }
+
+  header { padding: 48px 0 8px; }
+  .kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  h1 { font-size: clamp(30px, 5vw, 42px); line-height: 1.12; margin: 8px 0 12px; letter-spacing: -0.015em; text-wrap: balance; }
+  .chips { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+    font-size: 13.5px; font-weight: 600; padding: 7px 14px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow);
+  }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--fe); }
+  .chip.rel .dot { background: var(--be); }
+  .chip small { color: var(--muted); font-weight: 500; }
+
+  /* state pill — pick the variant matching the item's state */
+  .state {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    border-radius: 4px; padding: 1px 6px;
+  }
+  .state.todo { color: var(--muted); background: var(--code-bg); }
+  .state.doing { color: var(--warn); background: var(--warn-soft); }
+  .state.done { color: var(--good); background: var(--good-soft); }
+  .state.removed { color: var(--bad); background: var(--bad-soft); }
+
+  section { margin-top: 44px; }
+  h2 { font-size: 22px; letter-spacing: -0.01em; margin: 0 0 4px; text-wrap: balance; scroll-margin-top: 64px; }
+  .sectionsub { color: var(--muted); font-size: 14.5px; margin: 0 0 18px; }
+  p { max-width: 68ch; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; box-shadow: var(--shadow); }
+
+  /* imported description — arbitrary tracker HTML, contained */
+  .desc { overflow-wrap: break-word; }
+  .desc img { max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; }
+  .desc table { border-collapse: collapse; max-width: 100%; display: block; overflow-x: auto; }
+  .desc th, .desc td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
+  .desc pre { overflow-x: auto; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .desc pre code { background: none; border: none; padding: 0; white-space: pre; }
+  .desc blockquote { margin: 0.6em 0; padding: 4px 14px; border-left: 3px solid var(--line); color: var(--muted); }
+
+  /* comments */
+  .comment { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; box-shadow: var(--shadow); margin-top: 14px; }
+  .chead { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .cwho { font-weight: 650; }
+  .cwhen { color: var(--muted); font-size: 13px; }
+  .comment .desc { font-size: 15px; }
+
+  ul.items { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  ul.items li { padding-left: 24px; position: relative; max-width: 70ch; }
+  ul.items li::before {
+    content: ""; position: absolute; left: 2px; top: 0.5em; width: 9px; height: 9px; border-radius: 50%;
+    background: var(--fe); opacity: 0.85;
+  }
+  ul.items b { font-weight: 650; }
+  ul.items .why { color: var(--muted); }
+
+  .callout { border-radius: 10px; padding: 14px 18px; margin-top: 18px; font-size: 15px; max-width: 72ch; }
+  .callout b:first-child { display: block; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+  .callout.blocked { background: var(--bad-soft); }
+  .callout.blocked b:first-child { color: var(--bad); }
+  .callout.note { background: var(--warn-soft); }
+  .callout.note b:first-child { color: var(--warn); }
+  .callout.ok { background: var(--good-soft); }
+  .callout.ok b:first-child { color: var(--good); }
+
+  .tablewrap { overflow-x: auto; margin-top: 16px; border: 1px solid var(--line); border-radius: 10px; }
+  table.rel { border-collapse: collapse; width: 100%; font-size: 14.5px; background: var(--card); }
+  table.rel th, table.rel td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.rel tr:last-child td { border-bottom: none; }
+  table.rel th { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: var(--code-bg); }
+
+  footer { margin-top: 56px; color: var(--muted); font-size: 13.5px; }
+</style>
+
+<!-- OPTIONAL nav: only when the page is long — one chip per section that exists -->
+<nav aria-label="Sections">
+  <a class="navchip" href="#desc">Description</a>
+  <a class="navchip" href="#comments">Comments</a>
+  <!-- optional: #rel #attach -->
+</nav>
+
+<div class="wrap">
+  <!-- REQUIRED header: kicker carries id · type · assignee · date; the state
+       pill sits next to the h1 or in the chips. h1 = same short name as <title>.
+       Optional one-paragraph gist BELOW the h1 when the description is long —
+       a distillation, clearly yours, never a replacement for the description. -->
+  <header>
+    <div class="kicker">{{#616 · Issue · assigned {{who}} · {{created/updated date}}}}</div>
+    <h1>{{ITEM_SHORT_NAME}} <span class="state doing">{{state}}</span></h1>
+    <p>{{OPTIONAL_GIST — one paragraph, the single idea in <b>bold</b>.}}</p>
+    <div class="chips">
+      <a class="chip" href="{{ITEM_URL}}" target="_blank" rel="noopener"><span class="dot"></span>{{#616 · project}} <small>open in tracker</small></a>
+      <a class="chip rel" href="{{PARENT_OR_PR_URL}}" target="_blank" rel="noopener"><span class="dot"></span>{{parent / linked PR}} <small>{{three-word label}}</small></a>
+    </div>
+  </header>
+
+  <!-- REQUIRED: the item's description, AS-IS. Do not rewrite, reorder, or
+       summarize inside this card; images embedded as data: URIs in place. -->
+  <section id="desc">
+    <h2>Description</h2>
+    <p class="sectionsub">{{As written on the item · last edited {{date}}.}}</p>
+    <div class="card desc">
+      {{DESCRIPTION_HTML_AS_IS}}
+    </div>
+  </section>
+
+  <!-- REQUIRED when comments exist: chronological, oldest first, one card each.
+       Comment bodies render as-is (same .desc containment); images embedded. -->
+  <section id="comments">
+    <h2>Comments</h2>
+    <p class="sectionsub">{{N}} comments, oldest first.</p>
+    <div class="comment">
+      <div class="chead"><span class="cwho">{{Author}}</span><span class="cwhen">{{date · time}}</span></div>
+      <div class="desc">{{COMMENT_HTML_AS_IS}}</div>
+    </div>
+  </section>
+
+  <!-- OPTIONAL: linked work items, PRs, branches — when relations exist -->
+  <section id="rel">
+    <h2>Linked</h2>
+    <p class="sectionsub">Relations carried by the item.</p>
+    <div class="tablewrap">
+      <table class="rel">
+        <tr><th>Relation</th><th>Target</th><th>State</th></tr>
+        <tr><td>{{parent / related / PR}}</td><td><a href="{{url}}">{{#id · title}}</a></td><td>{{state}}</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- OPTIONAL: non-image attachments — names only; files stay on the tracker
+       (auth + CSP make them undownloadable from the page) -->
+  <section id="attach">
+    <h2>Attachments</h2>
+    <p class="sectionsub">Files live on the tracker; open the item to download.</p>
+    <div class="card">
+      <ul class="items">
+        <li><b>{{filename.ext}}</b> <span class="why">{{size · uploaded by · date}}</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- REQUIRED footer: provenance -->
+  <footer>
+    Generated {{DATE}} from {{tracker + item id, comments count, attachment count}}.
+  </footer>
+</div>

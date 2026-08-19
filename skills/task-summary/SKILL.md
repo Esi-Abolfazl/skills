@@ -25,7 +25,7 @@ Round-trip between the team's tracker and the session: import a work item/issue 
    ```bash
    curl -s -u ":$AZURE_DEVOPS_EXT_PAT" "<url>" -o <name>
    ```
-4. **Render one artifact**: title + state/type header, the description HTML as-is, comments in chronological order (author, date, body), images placed next to the text that references them. Embed every image as a `data:` URI — the artifact CSP blocks requests to dev.azure.com, so remote `<img>` URLs render as broken boxes.
+4. **Render one artifact from the template**: copy `task-page-template.html` (next to this file) and fill its slots — it is the design system and the section contract, shared tokens with `pr-summary`'s pages so every page reads as one family, whichever model builds it. Extend it when the item deserves a section it doesn't have; never restyle or re-derive what's there; leave the CSS block untouched even when selectors go unused. Non-negotiables baked into the slots: the description renders **as-is** (faithful import, never a rewrite — an optional gist paragraph in the header is the only distillation), comments chronological (author, date, body as-is), every image embedded as a `data:` URI — the artifact CSP blocks requests to the tracker, so remote `<img>` URLs render as broken boxes. Publish with the Artifact tool: title = the item's short name, favicon stable across redeploys.
 
 A GitHub issue follows the same shape: `gh issue view <url> --json title,body,state,author,labels,comments`, images downloaded and embedded the same way.
 
@@ -72,5 +72,7 @@ Creating, editing, or commenting is visible to the whole team: show the draft an
 | `az boards` 401s while `az repos` works | PAT lacks the Work Items scope — extend it, `az devops login` again. |
 | `--description` on update to "append" | It replaces. Fetch the current HTML, concatenate, send combined. |
 | Remote image URLs in the artifact | CSP blocks them — download with the PAT and embed as `data:` URIs. |
+| Fresh CSS / restyled page per item | `task-page-template.html` is the design system — fill and extend it, never re-derive it. |
+| Rewriting or summarizing the description in place | It renders as-is; the optional header gist is the only distillation. |
 | Markdown in Azure description fields | They are HTML; markdown shows literal `**`. (GitHub is the reverse: markdown, not HTML.) |
 | Asking which languages to include | The contract above already answers it. |
