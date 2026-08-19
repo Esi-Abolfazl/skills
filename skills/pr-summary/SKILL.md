@@ -1,11 +1,11 @@
 ---
 name: pr-summary
-description: Use when pulling one or more pull requests into the session as a summary page — a PR link or id from Azure DevOps or GitHub ("pull PR 532", "make a summary page of these two PRs", "summarize what changed in PR 482 as a page"), a single PR or a work item's PR bundle.
+description: Use when pulling one or more pull requests into the session as a summary page — a PR link or id from Azure DevOps or GitHub ("pull PR 532", "make a summary page of these two PRs", "summarize what changed in PR 482 as a page", "make an ADHD-friendly page for this PR"), a single PR or a work item's PR bundle.
 ---
 
 # pr-summary
 
-Turn a pull request (or a work item's PR bundle) into one published HTML summary page.
+Turn a pull request (or a work item's PR bundle) into one published HTML summary page. The page is ADHD-friendly by design — built for a reader who loses focus fast: the whole picture on the first screen, depth behind scrolling, never a wall of code — so the PR can be understood and acted on quickly.
 
 **REQUIRED BACKGROUND:** the `azure-devops` skill owns the az CLI gotchas (PAT scopes, org URL format, flag parity). Azure MCP tools (`mcp__azure-devops__*`, load via ToolSearch) come first; az CLI is the fallback when MCP is absent or a call fails.
 
