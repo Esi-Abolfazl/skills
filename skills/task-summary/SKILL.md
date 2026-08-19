@@ -1,9 +1,9 @@
 ---
-name: issue
+name: task-summary
 description: Use when pulling a work item, issue, or task into the session as a reviewable artifact — "pull issue 612", "get the azure item here with its comments/screenshots", "make an artifact of the work item" — or when creating or editing one ("create a work item for this", "log this for the backend team", "update the description of item 616", "add a comment to the issue"), including any request naming a description language ("write it in Turkish too", "German as primary").
 ---
 
-# issue
+# task-summary
 
 Round-trip between the team's tracker and the session: import a work item/issue as a reviewable HTML artifact, create one from session findings, or edit an existing one. Azure DevOps and GitHub today; the same shape extends to Jira/GitLab through whatever authenticated access exists — if none exists, say so and stop rather than scraping.
 
