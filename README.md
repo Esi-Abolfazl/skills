@@ -34,10 +34,11 @@ Nothing to set up front. Paste a link — the skill resolves its own access, in 
 
 ## Developing locally
 
-Skills in this repo are symlinked into `~/.claude/skills/`, so edits go live immediately:
+Skills in this repo are symlinked into `~/.claude/skills/` and `~/.agents/skills/` (the cross-runtime path Codex, Copilot CLI, and Gemini CLI also read), so edits go live in every agent immediately:
 
 ```bash
 ln -s "$(pwd)/skills/<skill-name>" ~/.claude/skills/<skill-name>
+ln -s "$(pwd)/skills/<skill-name>" ~/.agents/skills/<skill-name>
 ```
 
 Or let the CLI do it: `npx skills add . -g -a claude-code`.
