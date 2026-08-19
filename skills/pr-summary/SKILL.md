@@ -26,7 +26,7 @@ Resolve the provider from the URL or context, then collect all four:
 
 On Azure, file lists and counts come from git, not MCP — `repo_pull_request`'s `includeChangedFiles` returns an empty summary.
 
-Read the entire diff before writing a word — every claim on the page traces to the diff, the PR description, a review thread, or a linked item. When the diff is too big to read row by row, run `abridge-diff` and read its output instead. The diff is input only: the page never carries a diff or changed-rows section — counts (files, +/−) yes, rows no. Keeping rows off the page is also what keeps generation fast and the artifact small.
+Read the entire diff before writing a word — every claim on the page traces to the diff, the PR description, a review thread, or a linked item. When the diff is too big to read row by row (~50+ changed rows), abridge it first and read that instead: follow `abridging.md` in this directory — you pick coordinates, `abridge.py` emits a trustworthy reading diff (`rubric.md` holds the judgment rules). The diff is input only: the page never carries a diff or changed-rows section — counts (files, +/−) yes, rows no. Keeping rows off the page is also what keeps generation fast and the artifact small.
 
 ## Build
 

@@ -1,58 +1,41 @@
----
-name: abridge-diff
-description: Use when reviewing or reading a code diff that is too long or too mechanical to read row by row — a large commit, an agent-generated change, a noisy PR, "summarize this diff", "what actually changed here", "abridge this", "give me a reading diff". Also use when `meat` is wanted but no OPENAI_API_KEY or ANTHROPIC_API_KEY is available.
----
+# Abridging: turn the raw diff into a reading diff
 
-# Abridge a diff into a reading diff
-
-Turn a long unified diff into a short one that still *is* a diff: same rows,
-same markers, same file and hunk structure, with the mechanical bulk removed.
-A local port of [boldsoftware/meat](https://github.com/boldsoftware/meat) that
-runs on this session's model instead of a paid API key.
+Internal procedure of `pr-summary` — used in the Gather step when the PR's diff
+is too long to read row by row (~50+ changed rows). It turns a long unified
+diff into a short one that still *is* a diff: same rows, same markers, same
+file and hunk structure, with the mechanical bulk removed. A local port of
+[boldsoftware/meat](https://github.com/boldsoftware/meat) that runs on this
+session's model instead of a paid API key.
 
 **Core principle: you never write diff text.** You emit coordinates against the
 immutable original and `abridge.py` applies them. That is what makes the output
 trustworthy — every surviving row is byte-identical to the input except explicit
 elisions and generated `...` markers, so no line can be invented.
 
-## When to use
-
-- A commit, range, or working diff is long enough that reading it row by row
-  wastes the reviewer's attention.
-- Agent-generated changes, where most rows are mechanical and a few matter.
-- Before a code review, to find where the real change lives.
-
-**Not for:** hunting bugs (use `/code-review`), diffs under ~50 changed rows
-(just read them), or binary/lockfile-only diffs.
+Skip it for diffs under ~50 changed rows (just read them) and binary/lockfile-only
+diffs. It finds where the real change lives; it does not hunt bugs.
 
 ## Workflow
 
 Never skip step 3. Reading the numbered diff is where the judgment happens.
 
-`$SKILL` below is this skill's own directory — the base directory you are given
-when the skill loads. Set it once so the commands work wherever the skill is
-installed (`~/.claude/skills/`, `~/.agents/skills/`, a plugin cache, or a
+`$SKILL` below is the `pr-summary` skill directory — the base directory you are
+given when the skill loads. Set it once so the commands work wherever the skill
+is installed (`~/.claude/skills/`, `~/.agents/skills/`, a plugin cache, or a
 project-local `.claude/skills/`):
 
 ```bash
-SKILL=<this skill's base directory>
+SKILL=<the pr-summary skill's base directory>
 ```
 
-1. **Capture the diff to a file.** Pick the source from what was asked:
-
-   ```bash
-   git show HEAD > /tmp/d.diff          # a commit
-   git diff main...HEAD > /tmp/d.diff   # a branch
-   git diff --staged > /tmp/d.diff      # the index
-   git diff > /tmp/d.diff               # the working tree
-   ```
-
-   Use the session scratchpad instead of `/tmp` when one is configured.
+1. **Capture the diff to a file.** The Gather step usually produced it already
+   (`git diff origin/<target>...origin/<source>` or `gh pr diff <url>`); write
+   it to the session scratchpad, e.g. `pr.diff`.
 
 2. **Number it.**
 
    ```bash
-   python3 "$SKILL"/abridge.py number /tmp/d.diff
+   python3 "$SKILL"/abridge.py number pr.diff
    ```
 
    The gutter is `N|source`. `N` is a 1-based physical line in the original and
@@ -66,7 +49,7 @@ SKILL=<this skill's base directory>
 4. **Write the plan JSON**, then apply it:
 
    ```bash
-   python3 "$SKILL"/abridge.py apply /tmp/d.diff /tmp/plan.json
+   python3 "$SKILL"/abridge.py apply pr.diff plan.json
    ```
 
    The abridged diff goes to stdout; retention stats and the summary go to
@@ -74,10 +57,10 @@ SKILL=<this skill's base directory>
    coordinates and re-run. Rejections are the compiler protecting the
    guarantee, not a reason to hand-write the output.
 
-5. **Present** the abridged diff in a ```diff block, then the one-line summary,
-   then the retention line. Mention anything dropped wholesale (generated files,
-   mechanical renames) in the summary. Never mention imports — they are removed
-   automatically.
+5. **Read the abridged diff — it is your reading copy for building the page.**
+   Inside `pr-summary` it is input only: it never appears on the page, in the
+   terminal, or in the artifact. Every claim on the page can now trace to a
+   surviving row.
 
 ## Plan format
 
@@ -124,9 +107,10 @@ Rules the applier enforces, so plan around them:
 
 ## Self-healing
 
-This skill is the single source of truth for the abridging workflow. When
-something here is wrong, fix the source file in this directory before finishing
-the turn — do not work around it silently for one run.
+This file, `rubric.md`, and `abridge.py` in this directory are the single
+source of truth for the abridging workflow inside `pr-summary`. When something
+here is wrong, fix the source file before finishing the turn — do not work
+around it silently for one run.
 
 Fix here when:
 

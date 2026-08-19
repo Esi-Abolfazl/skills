@@ -19,7 +19,7 @@ npx skills add Esi-Abolfazl/skills --skill pr-summary -g -a claude-code -y
 | [pr-summary](skills/pr-summary/SKILL.md) | Pull a PR (or a work item's PR bundle) from Azure DevOps or GitHub into one polished HTML summary page — why / how / what, no diff rows. |
 | [issue](skills/issue/SKILL.md) | Pull a work item/issue into the session as a reviewable artifact (description, comments, embedded screenshots) — and create or edit items from session findings, with a bilingual-description contract. |
 
-Notes: Azure DevOps flows prefer the `azure-devops` MCP server and fall back to the `az` CLI; GitHub flows use `gh`. Companion skills (`abridge-diff`, `ux-writing`) sharpen `pr-summary` output when present but aren't required.
+Notes: Azure DevOps flows prefer the `azure-devops` MCP server and fall back to the `az` CLI; GitHub flows use `gh`. `pr-summary` ships its own diff-abridging workflow (`abridging.md` + `abridge.py` + `rubric.md`, ported from [boldsoftware/meat](https://github.com/boldsoftware/meat)) — no companion skill needed; `ux-writing` sharpens page copy when present but isn't required.
 
 ## Adding a skill
 
