@@ -1,0 +1,380 @@
+<title>{{SHORT_PAGE_NAME}}</title>
+<!--
+  PR summary page template. This file IS the design system — copy it, fill the
+  slots, delete unused variants and these comments. Extend it when the PR
+  warrants a new section; do not restyle what is here.
+
+  Slot legend:
+    REQUIRED  — every page has it
+    PICK ONE  — choose the variant that fits, delete the other
+    OPTIONAL  — include when the condition in its comment holds
+  These slots are the floor, not the menu: add sections and components for
+  whatever else the PR's material offers a reader — everything except exact
+  code changes (diff rows / change snippets).
+  Delete only markup and comments; leave the CSS block untouched even when
+  selectors go unused.
+  Lanes: one accent per PR/repo. Single PR → one lane, use .fe everywhere and
+  drop the second lane's colors from nav/tldr/chips.
+-->
+<style>
+  :root {
+    --paper: #f6f7f5;
+    --card: #ffffff;
+    --ink: #20272c;
+    --muted: #5c676f;
+    --line: #dde2e0;
+    --fe: #0e766e;
+    --fe-soft: #e2f1ef;
+    --be: #35569d;
+    --be-soft: #e7ecf7;
+    --warn: #96590a;
+    --warn-soft: #f7ecda;
+    --bad: #a83a50;
+    --bad-soft: #f8e7ea;
+    --good: #2e7d4f;
+    --good-soft: #e3f0e8;
+    --code-bg: #f0f2f0;
+    --shadow: 0 1px 2px rgba(32, 39, 44, 0.06), 0 4px 14px rgba(32, 39, 44, 0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #15191d;
+      --card: #1d2328;
+      --ink: #e4e9ec;
+      --muted: #9aa6ae;
+      --line: #323c43;
+      --fe: #3dbbaf;
+      --fe-soft: #14332f;
+      --be: #8aa5e8;
+      --be-soft: #1d2740;
+      --warn: #e0a458;
+      --warn-soft: #372a14;
+      --bad: #e37e91;
+      --bad-soft: #3b1e25;
+      --good: #63c08a;
+      --good-soft: #17301f;
+      --code-bg: #171c20;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #15191d;
+    --card: #1d2328;
+    --ink: #e4e9ec;
+    --muted: #9aa6ae;
+    --line: #323c43;
+    --fe: #3dbbaf;
+    --fe-soft: #14332f;
+    --be: #8aa5e8;
+    --be-soft: #1d2740;
+    --warn: #e0a458;
+    --warn-soft: #372a14;
+    --bad: #e37e91;
+    --bad-soft: #3b1e25;
+    --good: #63c08a;
+    --good-soft: #17301f;
+    --code-bg: #171c20;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.3);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Avenir Next", Seravek, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    line-height: 1.55;
+    font-size: 16px;
+  }
+  code, pre { font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace; }
+  code {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.05em 0.35em;
+    font-size: 0.86em;
+    white-space: nowrap;
+  }
+  a { color: inherit; }
+  a:focus-visible, summary:focus-visible, .navchip:focus-visible { outline: 2px solid var(--fe); outline-offset: 2px; }
+
+  .wrap { max-width: 820px; margin: 0 auto; padding: 0 20px 96px; }
+
+  nav {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    padding: 10px 20px;
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+  }
+  .navchip {
+    text-decoration: none; font-size: 13px; font-weight: 600; color: var(--muted);
+    border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 4px 12px;
+  }
+  .navchip:hover { color: var(--ink); border-color: var(--muted); }
+
+  header { padding: 48px 0 8px; }
+  .kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  h1 { font-size: clamp(30px, 5vw, 42px); line-height: 1.12; margin: 8px 0 12px; letter-spacing: -0.015em; text-wrap: balance; }
+  .prchips { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .prchip {
+    display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+    font-size: 13.5px; font-weight: 600; padding: 7px 14px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--card); box-shadow: var(--shadow);
+  }
+  .prchip .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .prchip.fe .dot { background: var(--fe); }
+  .prchip.be .dot { background: var(--be); }
+  .prchip small { color: var(--muted); font-weight: 500; }
+  .merged {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--good); background: var(--good-soft); border-radius: 4px; padding: 1px 6px;
+  }
+
+  section { margin-top: 44px; }
+  h2 { font-size: 22px; letter-spacing: -0.01em; margin: 0 0 4px; text-wrap: balance; scroll-margin-top: 64px; }
+  .sectionsub { color: var(--muted); font-size: 14.5px; margin: 0 0 18px; }
+  p { max-width: 68ch; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; box-shadow: var(--shadow); }
+
+  .tldr { border-left: 4px solid var(--fe); }
+  .tldr ul { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 10px; }
+  .tldr li { padding-left: 26px; position: relative; }
+  .tldr li::before { content: ""; position: absolute; left: 4px; top: 0.55em; width: 8px; height: 8px; border-radius: 2px; background: var(--fe); }
+  .tldr li[data-lane="be"]::before { background: var(--be); }
+  .tldr li[data-lane="warn"]::before { background: var(--warn); }
+
+  /* WHY variant A — before/after */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 700px) { .compare { grid-template-columns: 1fr; } }
+  .compare .card { display: grid; gap: 10px; align-content: start; }
+  .compare h4 { margin: 0; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .compare .old h4 { color: var(--bad); }
+  .compare .new h4 { color: var(--good); }
+  .compare ul { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 8px; font-size: 14.5px; }
+  .compare li { padding-left: 20px; position: relative; }
+  .compare .old li::before { content: "✕"; position: absolute; left: 0; color: var(--bad); font-weight: 700; }
+  .compare .new li::before { content: "✓"; position: absolute; left: 0; color: var(--good); font-weight: 700; }
+
+  /* WHY variant B / HOW journey — numbered chain */
+  .chain { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+  .chain li { counter-increment: step; position: relative; padding: 0 0 18px 52px; }
+  .chain li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: -2px; width: 32px; height: 32px; border-radius: 50%;
+    background: var(--card); border: 2px solid var(--line); color: var(--muted);
+    font-weight: 700; font-size: 14px; display: grid; place-items: center;
+  }
+  .chain li::after { content: ""; position: absolute; left: 15px; top: 32px; bottom: 2px; width: 2px; background: var(--line); }
+  .chain li:last-child::after { display: none; }
+  .chain li:last-child::before { border-color: var(--bad); color: var(--bad); }
+  .chain.ends-well li:last-child::before { border-color: var(--good); color: var(--good); }
+  .chain b { display: block; }
+  .chain span { color: var(--muted); font-size: 14.5px; max-width: 62ch; display: block; }
+
+  .pr { border-top: 4px solid var(--fe); }
+  .pr.be-lane { border-top-color: var(--be); }
+  .pr .lane-tag {
+    display: inline-block; font-size: 11.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    border-radius: 4px; padding: 2px 8px; margin-bottom: 10px; color: var(--fe); background: var(--fe-soft);
+  }
+  .pr.be-lane .lane-tag { color: var(--be); background: var(--be-soft); }
+  .pr h3 { margin: 0 0 2px; font-size: 18.5px; text-wrap: balance; }
+  .pr .branch { color: var(--muted); font-size: 13.5px; margin-bottom: 16px; }
+
+  .grouplabel {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); margin: 20px 0 10px;
+  }
+  .grouplabel:first-of-type { margin-top: 0; }
+
+  ul.changes { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  ul.changes li { padding-left: 24px; position: relative; max-width: 70ch; }
+  ul.changes li::before {
+    content: ""; position: absolute; left: 2px; top: 0.5em; width: 9px; height: 9px; border-radius: 50%;
+    background: var(--fe); opacity: 0.85;
+  }
+  .be-lane ul.changes li::before { background: var(--be); }
+  ul.changes b { font-weight: 650; }
+  ul.changes .why { color: var(--muted); }
+
+  .tablewrap { overflow-x: auto; margin-top: 16px; border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; background: var(--card); }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  th { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: var(--code-bg); }
+
+  .callout { border-radius: 10px; padding: 14px 18px; margin-top: 18px; font-size: 15px; max-width: 72ch; }
+  .callout b:first-child { display: block; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+  .callout.review, .callout.sec { background: var(--bad-soft); }
+  .callout.review b:first-child, .callout.sec b:first-child { color: var(--bad); }
+  .callout.debt { background: var(--warn-soft); }
+  .callout.debt b:first-child { color: var(--warn); }
+  .callout.ok { background: var(--good-soft); }
+  .callout.ok b:first-child { color: var(--good); }
+
+  .verify { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .vchip {
+    font-size: 13px; font-weight: 600; border-radius: 999px; padding: 4px 12px;
+    background: var(--good-soft); color: var(--good); font-variant-numeric: tabular-nums;
+  }
+  .vchip.meh { background: var(--warn-soft); color: var(--warn); }
+
+  .order { display: grid; gap: 14px; }
+  .order .card { display: grid; gap: 6px; }
+  .order .when { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+
+  footer { margin-top: 56px; color: var(--muted); font-size: 13.5px; }
+</style>
+
+<!-- REQUIRED: one chip per section that exists on this page, same order -->
+<nav aria-label="Sections">
+  <a class="navchip" href="#tldr">TL;DR</a>
+  <a class="navchip" href="#why">{{WHY_LABEL}}</a>
+  <a class="navchip" href="#pr1">{{LANE_1}} · {{PR_1_ID}}</a>
+  <!-- more PR chips, then optional: #journey #fit #left #security -->
+</nav>
+
+<div class="wrap">
+  <!-- REQUIRED header. Unmerged PR: its state (active/draft/abandoned) goes in the
+       kicker; the merged badge on the chip is the only merged treatment.
+       h1 = the same short name as <title>. -->
+  <header>
+    <div class="kicker">{{WORK_ITEM_OR_ISSUE}} · {{BRANCH_OR_STATE}} · {{DATE}}</div>
+    <h1>{{SHORT_PAGE_NAME}}</h1>
+    <p>{{ONE_PARAGRAPH_GIST — name the single idea in <b>bold</b>, link forward to a section if ordering matters}}</p>
+    <div class="prchips">
+      <a class="prchip fe" href="{{PR_URL}}" target="_blank" rel="noopener"><span class="dot"></span>{{PR id · repo}} <small>{{three-word label}}</small> <!-- if merged: --><span class="merged">merged</span></a>
+    </div>
+  </header>
+
+  <!-- REQUIRED: 3–5 bullets, whole picture, each opens bold; data-lane colors the dot -->
+  <section id="tldr">
+    <h2>TL;DR</h2>
+    <p class="sectionsub">{{N}} sentences, whole picture.</p>
+    <div class="card tldr">
+      <ul>
+        <li><b>{{Lead claim}}</b> {{— rest of the sentence.}}</li>
+        <li data-lane="be"><b>{{Other lane's claim.}}</b> {{…}}</li>
+        <li data-lane="warn"><b>{{Risk / review catch worth surfacing.}}</b> {{…}}</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- REQUIRED WHY — PICK ONE variant, delete the other -->
+  <!-- Variant A (redesign / replacement): before vs after -->
+  <section id="why">
+    <h2>{{Why replace the old model}}</h2>
+    <p class="sectionsub">{{The old world vs. the new one, side by side.}}</p>
+    <div class="compare">
+      <div class="card old">
+        <h4>Before — {{what was wrong, three words}}</h4>
+        <ul><li>{{old-world fact}}</li></ul>
+      </div>
+      <div class="card new">
+        <h4>After — {{the new rule, three words}}</h4>
+        <ul><li>{{new-world fact}}</li></ul>
+      </div>
+    </div>
+  </section>
+  <!-- Variant B (bug fix): the failure as a numbered chain, cause → symptom -->
+  <section id="why">
+    <h2>The bug, as a chain</h2>
+    <p class="sectionsub">{{Why symptom X and log line Y were the same bug.}}</p>
+    <div class="card">
+      <ol class="chain">
+        <li><b>{{Step}}</b><span>{{one-line explanation}}</span></li>
+        <li><b>{{Result: what the user saw}}</b><span>{{…}}</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- OPTIONAL HOW: when the mechanism spans layers, trace ONE concrete thing
+       end to end (a permission, a request, a token). Use class="chain ends-well". -->
+  <section id="journey">
+    <h2>{{One thing}}'s journey</h2>
+    <p class="sectionsub">{{How a single concrete example flows end to end.}}</p>
+    <div class="card">
+      <ol class="chain ends-well">
+        <li><b>{{Stage}}</b><span>{{what happens here and where it lives}}</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- REQUIRED: one per PR. Lane class on .pr and matching lane-tag. -->
+  <section id="pr1">
+    <h2>{{Lane}} — PR {{id}}</h2>
+    <p class="sectionsub">{{PR title or thesis · branch · ADRs if any}}</p>
+    <div class="card pr"><!-- second lane: class="card pr be-lane" -->
+      <span class="lane-tag">{{Repo}} · {{N files}}</span>
+      <h3>{{Thesis: what this PR really does, one sentence}}</h3>
+      <div class="branch">{{Context line: the everyday failure it kills, or the module that now owns what.}}</div>
+
+      <!-- OPTIONAL: contract/behavior table when the PR changes an API or rule —
+           cases as rows, results as columns. Works anywhere, not just in PR cards. -->
+      <div class="tablewrap">
+        <table>
+          <tr><th>{{Case / request}}</th><th>{{Result}}</th></tr>
+          <tr><td>{{…}}</td><td>{{…}}</td></tr>
+        </table>
+      </div>
+
+      <!-- OPTIONAL grouplabel when >6 bullets; repeat label+list per group -->
+      <div class="grouplabel">{{Group}}</div>
+      <ul class="changes">
+        <li><b>{{What changed.}}</b> <span class="why">{{Why — the consequence or rationale, muted.}}</span></li>
+      </ul>
+
+      <!-- OPTIONAL callouts: review = caught in review; sec = security; debt = named debt; ok = good news -->
+      <div class="callout review">
+        <b>Caught in review</b>
+        {{What the first version got wrong, what would have happened, how it is fixed, the regression test.}}
+      </div>
+
+      <!-- REQUIRED: test evidence with real numbers; .meh for softer evidence -->
+      <div class="verify">
+        <span class="vchip">{{suite name N/N}}</span>
+        <span class="vchip meh">{{softer evidence}}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- OPTIONAL (multi-PR): merge order / cross-PR contract -->
+  <section id="fit">
+    <h2>How the {{two}} PRs fit together</h2>
+    <p class="sectionsub">{{What blocks what — or that nothing does.}}</p>
+    <div class="order">
+      <div class="card">
+        <span class="when">{{Now / After X reaches main}}</span>
+        <p style="margin:0;">{{What holds in this window; name deliberate debt.}}</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- OPTIONAL: known debt / handoffs, each named and tracked. -->
+  <section id="left">
+    <h2>Leftovers — known, named, tracked</h2>
+    <p class="sectionsub">Nothing hidden; these are the open edges.</p>
+    <div class="card">
+      <ul class="changes">
+        <li><b>{{Debt item.}}</b> <span class="why">{{Where it is tracked, when it retires.}}</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- OPTIONAL: quiet security payloads, one callout each (.sec gone-bad, .ok win) -->
+  <section id="security">
+    <h2>Security wins worth remembering</h2>
+    <p class="sectionsub">The redesign's quiet payloads.</p>
+    <div class="callout sec"><b>{{Hole — gone}}</b> {{what it was, what closed it}}</div>
+  </section>
+
+  <!-- REQUIRED footer: provenance. The page never carries a diff or changed-rows
+       section — counts only (files, +/−); exact changes live in Azure/GitHub. -->
+  <footer>
+    Generated {{DATE}} from {{diff range, PR descriptions, review threads}} · {{Work item link/id}}.
+  </footer>
+</div>
