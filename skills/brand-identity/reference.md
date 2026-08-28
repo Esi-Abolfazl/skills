@@ -1,4 +1,4 @@
-# Brand Identity Design — Reference
+# Logo Design — Reference
 
 ## The 9 brief questions
 
@@ -18,17 +18,15 @@ Anything the brief doesn't answer: assume plausibly and mark `(assumed: …)` in
 
 Pick 2–3, each tied to brand attributes:
 
-| Direction | Fits attributes like | Display + text pairing (all OFL/Google) |
-|---|---|---|
-| geometric minimal | precise, technical, modern | Space Grotesk + Inter |
-| humanist / organic | warm, approachable, human | Nunito Sans + Source Sans 3 |
-| editorial serif | established, premium, credible | Cormorant Garamond or Fraunces + Karla |
-| monospace / technical | engineering, developer, exact | JetBrains Mono (accents) + Inter |
-| bold condensed | loud, confident, sport | Archivo Expanded/Black + Archivo |
-| monoline rounded | friendly, consumer, playful | Quicksand + Nunito |
-| heritage / emblem | tradition, craft, provenance | Playfair Display + Lora |
-
-**Shape and type read before words do:** round forms read warm/community, angular forms read energy/precision; serifs read competence/establishment, scripts read ceremony — pick the read that matches the positioning, then verify it against the landscape scan.
+| Direction | Fits attributes like |
+|---|---|
+| geometric minimal | precise, technical, modern |
+| humanist / organic | warm, approachable, human |
+| editorial serif | established, premium, credible |
+| monospace / technical | engineering, developer, exact |
+| bold condensed | loud, confident, sport |
+| monoline rounded | friendly, consumer, playful |
+| heritage / emblem | tradition, craft, provenance |
 
 ## Industry cliché map
 
@@ -41,7 +39,6 @@ Use one of these only with a **named twist**, stated in the rationale — and ch
 - robotics / hardware: robot head, cog, chevron-in-box
 - health: cross, heart, caduceus, leaf-in-hand
 - eco / sustainability: leaf, globe, water drop
-- food / dining: fork-and-knife, chef's hat, wave for anything coastal
 - real estate / construction: roofline, skyline
 - education: book, graduation cap, owl
 - logistics / delivery: box, arrow, wing
@@ -91,7 +88,7 @@ def text_to_path(text, font_path, size=100, tracking=0):
 
 Set `viewBox` minY ≈ −capHeight so the outlined text is inside it. Fonts: Google Fonts TTFs are freely licensed (note the license, usually OFL); macOS `/System/Library/Fonts/Supplemental/` works for drafts but ships with license unknowns — prefer OFL for the final. Short all-caps wordmarks may instead be drawn directly as geometric paths.
 
-**Geometry hygiene:** tight viewBox with small round numbers; square canvas for favicon/avatar masters; one `fill` value per colorway file (mono/reverse are fill-swaps of identical geometry); strokes converted or width-checked at 16 px (a 1-unit stroke in a 100-unit viewBox ≈ 0.16 px at favicon size — it vanishes). If the mark thins at ≤48 px, produce a bolder **small cut** as its own master.
+**Geometry hygiene:** tight viewBox with small round numbers; one `fill` value per colorway file (mono/reverse are fill-swaps of identical geometry); strokes converted or width-checked at 16 px (a 1-unit stroke in a 100-unit viewBox ≈ 0.16 px at favicon size — it vanishes).
 
 **Optical, not mathematical:** round shapes overshoot flat ones slightly; center marks by eye at final size, not by bounding box.
 
@@ -105,54 +102,9 @@ rsvg-convert -w 512 in.svg > out.png
 python3 -m pip install cairosvg && python3 -c "import cairosvg; cairosvg.svg2png(url='in.svg', write_to='out.png', output_width=512)"
 ```
 
-Fallback: headless Chrome `--screenshot` on an HTML wrapper. Favicon/app set: 16, 32, 48, 180 (apple-touch), 192, 512 (≤48 from the small cut when one exists). `.ico` via Pillow only if asked.
+Fallback: headless Chrome `--screenshot` on an HTML wrapper. Favicon/app set: 16, 32, 48, 180 (apple-touch), 192, 512. `.ico` via Pillow only if asked.
 
 **Validation = viewing the rendered PNGs**, not the export command succeeding. Read/open each size; fix; re-render.
-
-## Color system
-
-Roles — max 6 colors total:
-
-| Role | Count | Job examples |
-|---|---|---|
-| primary | 1 | the brand color; mark, key actions |
-| secondary | 1–2 | support surfaces, illustration |
-| neutrals | 2 | text ink + background |
-| accent | 1 | highlights, states — never body text unless it passes |
-
-Every color: name, HEX, one-line job (+ RGB/CMYK when print is in scope; flag CMYK values as uncalibrated conversions unless proofed).
-
-**Contrast — compute, don't eyeball** (tested; #000/#fff → 21.0, #767676/#fff → 4.54):
-
-```python
-def lum(h):
-    h = h.lstrip('#'); r, g, b = (int(h[i:i+2], 16) / 255 for i in (0, 2, 4))
-    f = lambda c: c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
-    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
-
-def ratio(a, b):
-    la, lb = sorted((lum(a), lum(b)), reverse=True)
-    return (la + 0.05) / (lb + 0.05)
-```
-
-Targets: body text ≥ 4.5:1, large headlines ≥ 3:1. Name the failing pairs in the spec with their allowed use ("accent: large text only, 4.1:1") — never omit them.
-
-## Imagery direction (identity scope)
-
-Three adjectives + one do/don't line, e.g.: "Coastal, unstaged, daylight. Do: real ingredients on real surfaces. Don't: stock smiles, studio white sweeps." Derive it from the positioning and the audience questions: what do they value, how should they feel.
-
-## Refresh — equity inventory
-
-Before redesigning anything, table the existing identity:
-
-| Element | What it is today | Recognized by customers? | Verdict + reason |
-|---|---|---|---|
-| mark silhouette / motif | | | keep / evolve / replace |
-| color palette | | | |
-| type style | | | |
-| name treatment (casing, lockup) | | | |
-
-Rules: change no more than the brief justifies; "dated" alone justifies *evolve*, not *replace*; the board shows old vs new side by side; minimum sizes and applications get re-validated after the change.
 
 ## Presentation board — section order
 
@@ -160,30 +112,22 @@ One self-contained HTML file:
 
 1. Brief + marked assumptions
 2. Positioning sentence
-3. Landscape: industry defaults, clichés, conform/differentiate call (labeled researched vs knowledge-based)
-4. *(refresh only)* Equity inventory + old vs new side by side
-5. All concepts — sketch + name + idea line each
-6. Recommendation + rationale (cites positioning), runner-up notes
-7. Variants grid: lockups × colorways, reverse shown on a dark tile
-8. Validation strip: 16/32/48 px renders embedded at actual size
-9. *(identity scope)* Identity system: palette with ratios, type specimen, imagery direction
-10. *(identity scope)* Applications: the ≥3 mockups
-11. Spec (below)
-12. File manifest
-
-Logo-only scope skips 4, 9, 10.
+3. Landscape: industry defaults, clichés, conform/differentiate call
+4. All concepts — sketch + name + idea line each
+5. Recommendation + rationale (cites positioning), runner-up notes
+6. Variants grid: lockups × colorways, reverse shown on a dark tile
+7. Validation strip: 16/32/48 px renders embedded at actual size
+8. Spec (below)
+9. File manifest
 
 ## Spec skeleton
 
 - Positioning sentence
-- Colors: name, HEX, job (one line each; + RGB/CMYK when print is in scope); failing contrast pairs named with allowed use
-- Type: fonts, licenses, fallback stacks, size scale
-- Variant use-case table: horizontal / stacked / mark-only / small cut / each colorway → when to use it
-- Fixed vs flexible: which elements never change (mark geometry, palette, type) vs where teams have room (imagery per campaign, layouts)
+- Colors: name, HEX, job (one line each)
+- Type: font, license, fallback stack
 - Clearspace: as a fraction of mark height (e.g. "x = cap height, keep x on all sides")
-- Minimum sizes: px (screen) and mm (print), per colorway if they differ
-- Imagery direction (identity scope)
-- 3 don'ts (specific to this identity)
+- Minimum sizes: px (screen) and mm (print)
+- 3 don'ts (specific to this mark)
 
 ## Name collision
 
