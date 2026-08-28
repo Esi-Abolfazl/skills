@@ -16,6 +16,7 @@ npx skills add Esi-Abolfazl/skills --skill pr-summary -g -a claude-code -y
 
 | Skill | What it does |
 |---|---|
+| [brand-identity](skills/brand-identity/SKILL.md) | Runs brand identity work end to end, deepest on logos: positioning and a competitor/cliché scan, 3+ logo concepts, one built out into color/type/imagery and mockups, delivered on a single presentation board. Every legibility and contrast claim is backed by rendered files; refreshes inventory recognized equity before redesigning. |
 | [pr-summary](skills/pr-summary/SKILL.md) | Turns a PR — or a work item's PR bundle — from Azure DevOps or GitHub into one HTML page: why the change exists, how it works, what changed. Whole picture on the first screen, never a wall of diff rows. |
 | [task-summary](skills/task-summary/SKILL.md) | Pulls a work item or issue into a readable page: description as written, comments in order, screenshots embedded. Also creates and edits items from session findings; descriptions can be bilingual (full text + short summary). |
 
