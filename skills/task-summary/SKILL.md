@@ -27,6 +27,8 @@ Round-trip between the team's tracker and the session: import a work item/issue 
    ```
 4. **Render one artifact from the template**: copy `task-page-template.html` (next to this file) and fill its slots — it is the design system and the section contract, shared tokens with `pr-summary`'s pages so every page reads as one family, whichever model builds it. Extend it when the item deserves a section it doesn't have; never restyle or re-derive what's there; leave the CSS block untouched even when selectors go unused. Non-negotiables baked into the slots: the description renders **as-is** (faithful import, never a rewrite — an optional gist paragraph in the header is the only distillation), comments chronological (author, date, body as-is), every image embedded as a `data:` URI — the artifact CSP blocks requests to the tracker, so remote `<img>` URLs render as broken boxes. Publish with the Artifact tool: title = the item's short name, favicon stable across redeploys.
 
+   Publishing arms a background watch on the page — republish notices, plus comment auto-replies when this session has them on. Import pages are one-shot, nothing else edits them concurrently, so drop the watch right after: `Artifact` with `action: "unwatch"` and the page's URL (`action: "status"` lists what this session watches). Every republish arms it again — unwatch again, and never republish just to move the watch.
+
 A GitHub issue follows the same shape: `gh issue view <url> --json title,body,state,author,labels,comments`, images downloaded and embedded the same way.
 
 ## Create: findings → work item

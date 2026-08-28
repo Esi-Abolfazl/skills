@@ -58,6 +58,8 @@ Voice: headings are theses ("A refresh token is enough authority to end its own 
 
 Publish with the Artifact tool: title = the page's short name, favicon stable across redeploys.
 
+Publishing arms a background watch on the page — republish notices, plus comment auto-replies when this session has them on. Summary pages are one-shot, nothing else edits them concurrently, so drop the watch right after: `Artifact` with `action: "unwatch"` and the page's URL (`action: "status"` lists what this session watches). Every republish arms it again — unwatch again, and never republish just to move the watch.
+
 ## Common mistakes
 
 | Mistake | Fix |
