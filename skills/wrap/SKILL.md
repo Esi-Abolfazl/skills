@@ -12,8 +12,10 @@ Close out the session so the repo is clean, verified, and ready to commit. Work 
 
 `/wrap $ARGUMENTS` — bare words, any order; `--f` only after `s`; `p` implies `c`. Bare `/wrap` = steps 1–8, step 6 only when its trigger fires (local scope), step 7 draft-only.
 
-- `commit` / `c` — step 7 commits (explicit paths). If unpushed commits remain, may ask once (AskUserQuestion) whether to push.
-- `push` / `p` — step 7 commits and pushes: `git push <remote> <branch>`, fast-forward only, never bare `--force`. Remote = the upstream's (`git rev-parse --abbrev-ref @{u}` → `<remote>/<branch>`); no upstream → `-u` to the sole remote, ask if several. Ask first when on the default branch or the remote rejects.
+The model picks the arguments from what the user asked — "commit" → `c`, "push" → `p`, "squash"/"regroup" → `s` — and runs the skill itself. Never tell the user to type `/wrap …`, and never ask permission for a plain commit or fast-forward push; the one confirmation in this skill is the `--f` force push.
+
+- `commit` / `c` — step 7 commits (explicit paths). Unpushed commits are reported under Needs you, not asked about.
+- `push` / `p` — step 7 commits and pushes: `git push <remote> <branch>`, fast-forward only, never bare `--force`. Remote = the upstream's (`git rev-parse --abbrev-ref @{u}` → `<remote>/<branch>`); no upstream → `-u` to the sole remote, ask if several. Remote rejects → stop and report; never force.
 - `squash` / `s` — step 6 runs regardless of the pattern check; local scope.
 - `s --f` — step 6 covers the whole branch since its merge-base with the default branch, pushed commits included, then pushes with `--force-with-lease`. Asks once before the reset. Only for branches nobody else has open work or reviews on.
 
