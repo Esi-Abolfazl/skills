@@ -18,6 +18,7 @@ npx skills add Esi-Abolfazl/skills --skill pr-summary -g -a claude-code -y
 |---|---|
 | [brand-identity](skills/brand-identity/SKILL.md) | Runs brand identity work end to end, deepest on logos: positioning and a competitor/cliché scan, 3+ logo concepts, one built out into color/type/imagery and mockups, delivered on a single presentation board. Every legibility and contrast claim is backed by rendered files; refreshes inventory recognized equity before redesigning. |
 | [pr-summary](skills/pr-summary/SKILL.md) | Turns a PR — or a work item's PR bundle — from Azure DevOps or GitHub into one HTML page: why the change exists, how it works, what changed. Whole picture on the first screen, never a wall of diff rows. |
+| [wrap](skills/wrap/SKILL.md) | Closes a session: sweeps leftovers, retires debt, syncs docs, runs the repo's gates, regroups work-branch commits by concern, drafts the commit message. Bare `/wrap` is draft-only; `c` commits, `p` pushes, `s` squashes. Ships a commit gate hook (see below). |
 | [task-summary](skills/task-summary/SKILL.md) | Pulls a work item or issue into a readable page: description as written, comments in order, screenshots embedded. Also creates and edits items from session findings; descriptions can be bilingual (full text + short summary). |
 
 ## Connecting
@@ -25,6 +26,16 @@ npx skills add Esi-Abolfazl/skills --skill pr-summary -g -a claude-code -y
 Nothing to set up front. Paste a link — the skill resolves its own access, in order: a connected MCP server for that provider → the provider's CLI (`az`, `gh`, `glab`), signed in → REST with a token from the environment → plain `git` for diffs. When no path works, it names what's missing and asks how you want to connect. Azure DevOps and GitHub are exercised daily; GitLab and others ride the same ladder.
 
 `pr-summary` bundles its diff-abridging tools (`abridging.md`, `abridge.py`, `rubric.md` — ported from [boldsoftware/meat](https://github.com/boldsoftware/meat)) — no companion skills needed.
+
+## Commit gate (wrap)
+
+`skills/wrap/hooks/wrap-gate.sh` routes every commit through `/wrap c`: a Bash `git commit` is denied unless `/wrap` was invoked this turn (user-typed `/wrap …` or the model's `Skill(wrap)` arms it; wrap then commits itself; every new prompt disarms it). Wire it in `~/.claude/settings.json`:
+
+```json
+"PreToolUse":       [{ "matcher": "Bash",  "hooks": [{ "type": "command", "command": "~/.claude/skills/wrap/hooks/wrap-gate.sh", "timeout": 5 }] }],
+"PostToolUse":      [{ "matcher": "Skill", "hooks": [{ "type": "command", "command": "~/.claude/skills/wrap/hooks/wrap-gate.sh", "timeout": 5 }] }],
+"UserPromptSubmit": [{                    "hooks": [{ "type": "command", "command": "~/.claude/skills/wrap/hooks/wrap-gate.sh", "timeout": 5 }] }]
+```
 
 ## Adding a skill
 
