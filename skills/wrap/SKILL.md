@@ -88,7 +88,7 @@ Method (no interactive rebase):
 5. `git diff --quiet $OLD HEAD` must pass, else `git reset --hard $OLD`, report, stop.
 6. `--f` only: verify each intermediate commit — `git checkout <sha> && <typecheck command>` per commit, then `git checkout <branch>`; a failure → merge that group into the one it needs and redo from 2, or `git reset --hard $OLD` and stop. Then, with upstream: `git push --force-with-lease=<branch>:$REMOTE $R <branch>`. Rejected → stop; never `--force`.
 
-Mechanics of this step and the step 2 refs/`$TREE` snapshot are exercised by `tests/dry-run.sh` (throwaway repo, bare remote, both scopes, every guard); run it after editing this step.
+Mechanics of this step and the step 2 refs/`$TREE` snapshot are exercised by `tests/dry-run.sh` (throwaway repo, bare remote, both scopes, every guard); run it after editing this step. `tests/gate.sh` exercises the commit-gate hook; run it after editing the hook.
 
 Report: old hashes gone; `git reset --hard <OLD>` (print the hash) undoes the regroup until garbage collection; whether intermediate commits were typecheck-verified (local runs: ordered for bisectability, unverified unless you ran them). After `--f`: other checkouts recover with `git fetch && git reset --hard $R/<branch>`. Plain `s` with pushed commits above `$BASE`: mention `s --f` can regroup those too.
 

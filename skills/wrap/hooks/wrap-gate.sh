@@ -6,6 +6,8 @@
 #   UserPromptSubmit          — new turn disarms; a user-typed `/wrap ...` arms
 #   PostToolUse  (Skill)      — Skill(wrap) arms
 #   PreToolUse   (Bash)       — `git commit` unarmed: deny once and arm
+# The match is textual and quotes count: stripping them would let `sh -c '…git commit…'` and unbalanced
+# quotes slip through. A quoted literal costs at most one retry. Self-test: tests/gate.sh.
 set -u
 INPUT=$(cat)
 EVENT=$(jq -r '.hook_event_name // ""' <<<"$INPUT")
