@@ -68,7 +68,7 @@ A soft reset regroups at file granularity — true per-concern commits come from
 Method (no interactive rebase):
 1. Park uncommitted wrap edits: with `c`/`p` run step 7 now (they join the regroup); else `git stash push` (tracked only — untracked files don't affect a soft reset and may be large tool output), pop after 5, also on abort.
 2. `OLD=$(git rev-parse HEAD)`; `git reset --soft <scope> && git reset`.
-3. One `git add <explicit paths>` + commit per concern, mirroring the default branch's grouping and order, dependencies first (schema → api → ui → e2e/docs) so the branch bisects. Each commit is one united change that stands alone and typechecks — merge a group that can't into the one it needs; never squash merely for fewer commits. Files that don't partition without hunk splits → ask: merge groups / keep separate / stop.
+3. One `git add <explicit paths>` + commit per concern, mirroring the default branch's grouping and order, dependencies first (schema → api → ui → e2e/docs) so the branch bisects. Each commit is one united change that stands alone and typechecks — merge a group that can't into the one it needs; never squash merely for fewer commits. Files that don't partition without hunk splits → ask: merge groups / keep separate / stop. Each `git commit` is its own Bash call, never the tail of a chain, so the commit gate's "rerun the exact command" replays only the commit.
 4. Messages per step 7.
 5. `git diff --quiet $OLD HEAD` must pass, else `git reset --hard $OLD`, report, stop.
 6. `--f` only: verify each intermediate commit — `git checkout <sha> && <typecheck command>` per commit, then `git checkout <branch>`; a failure → merge that group into the one it needs and redo from 2, or `git reset --hard $OLD` and stop. Then, with upstream: `git push --force-with-lease=<branch>:$REMOTE $R <branch>`. Rejected → stop; never `--force`.
@@ -79,7 +79,7 @@ Report: old hashes gone; `git reset --hard <OLD>` (print the hash) undoes the re
 
 ## 7. Commit message
 
-For changes still uncommitted after step 6 (with `c`/`p` after a squash, step 7 already ran inside it). Readable by humans and LLMs: `type(scope): subject` ≤ 72 chars; body a few lines — what changed and why, pointing to the docs from step 4; one united change per commit, split when changes span concerns; match recent `git log` style. Draft only; with `c`/`p`, commit with explicit paths, then push per Arguments.
+For changes still uncommitted after step 6 (with `c`/`p` after a squash, step 7 already ran inside it). Readable by humans and LLMs: `type(scope): subject` ≤ 72 chars; body a few lines — what changed and why, pointing to the docs from step 4; one united change per commit, split when changes span concerns; match recent `git log` style. Draft only; with `c`/`p`, commit with explicit paths, then push per Arguments. The commit runs as its own Bash call for the same reason.
 
 ## 8. Report
 
