@@ -107,7 +107,9 @@ End every wrap with this help block:
 
 ```
 /wrap            sweep · review · docs · gates · draft only
-/wrap c|commit   + commit            c --p: and fast-forward push
-/wrap s|squash   regroup local commits by concern   s --p: and push
+/wrap c|commit   + commit
+/wrap c --p      + commit and fast-forward push
+/wrap s|squash   regroup local commits by concern
+/wrap s --p      regroup, commit, fast-forward push
 /wrap s --f      whole branch, then --force-with-lease (asks first)
 ```
