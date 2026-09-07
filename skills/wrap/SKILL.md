@@ -1,7 +1,7 @@
 ---
 name: wrap
-description: "Session wrap-up: sweep leftovers, review the diff and apply the findings, retire debt, sync docs, verify green, regroup work-branch commits, draft a short commit message, report what needs you. Arguments: commit (c) / push (p) / squash (s, --f for the whole branch)."
-argument-hint: "[c|commit] [p|push] [s|squash [--f]]"
+description: "Session wrap-up: sweep leftovers, review the diff and apply the findings, retire debt, sync docs, verify green, regroup work-branch commits, draft a short commit message, report what needs you. Arguments: commit (c) / squash (s); --p pushes after either; s --f regroups the whole branch."
+argument-hint: "[c|commit [--p]] [s|squash [--p|--f]]"
 ---
 
 # Wrap the session
@@ -10,14 +10,14 @@ Close out the session so the repo is clean, verified, and ready to commit. Work 
 
 ## Arguments
 
-`/wrap $ARGUMENTS` — bare words, any order; `--f` only after `s`; `p` implies `c`. Bare `/wrap` = steps 1–9, step 7 only when its trigger fires (local scope), step 8 draft-only.
+`/wrap $ARGUMENTS` — bare words, any order; `--p` only after `c` or `s`, `--f` only after `s`; `--p` implies `c`. Bare `/wrap` = steps 1–9, step 7 only when its trigger fires (local scope), step 8 draft-only.
 
-The model picks the arguments from what the user asked — "commit" → `c`, "push" → `p`, "squash"/"regroup" → `s` — and runs the skill itself. Never tell the user to type `/wrap …`, and never ask permission for a plain commit or fast-forward push; the one confirmation in this skill is the `--f` force push.
+The model picks the arguments from what the user asked — "commit" → `c`, "push" → `--p`, "squash"/"regroup" → `s` — and runs the skill itself. Never tell the user to type `/wrap …`, and never ask permission for a plain commit or fast-forward push; the one confirmation in this skill is the `--f` force push.
 
 - `commit` / `c` — step 8 commits (explicit paths). Unpushed commits are reported under Needs you, not asked about.
-- `push` / `p` — step 8 commits and pushes: `git push <remote> <branch>`, fast-forward only, never bare `--force`. Remote = the upstream's (`git rev-parse --abbrev-ref @{u}` → `<remote>/<branch>`); no upstream → `-u` to the sole remote, ask if several. Remote rejects → stop and report; never force.
+- `--p` — after step 8's commit(s), push: `git push <remote> <branch>`, fast-forward only, never bare `--force`. With `s`, the regrouped commits are what gets pushed (local scope, so always a fast-forward). Remote = the upstream's (`git rev-parse --abbrev-ref @{u}` → `<remote>/<branch>`); no upstream → `-u` to the sole remote, ask if several. Remote rejects → stop and report; never force.
 - `squash` / `s` — step 7 runs regardless of the pattern check; local scope.
-- `s --f` — step 7 covers the whole branch since its merge-base with the default branch, pushed commits included, then pushes with `--force-with-lease`. Asks once before the reset. Only for branches nobody else has open work or reviews on.
+- `s --f` — step 7 covers the whole branch since its merge-base with the default branch, pushed commits included, then pushes with `--force-with-lease` (`--p` is redundant here). Asks once before the reset. Only for branches nobody else has open work or reviews on.
 
 ## 1. Sweep
 
@@ -81,7 +81,7 @@ Scope: `$SCOPE` from step 2. `--f` = `$BASE`, after ONE AskUserQuestion — proc
 A soft reset regroups at file granularity — true per-concern commits come from committing per concern during the session; wrap only tidies.
 
 Method (no interactive rebase):
-1. Park uncommitted wrap edits: with `c`/`p` run step 8 now (they join the regroup); else `git stash push` (tracked only — untracked files don't affect a soft reset and may be large tool output), pop after 5, also on abort.
+1. Park uncommitted wrap edits: with `c` run step 8 now (they join the regroup); else `git stash push` (tracked only — untracked files don't affect a soft reset and may be large tool output), pop after 5, also on abort.
 2. `OLD=$(git rev-parse HEAD)`; `git reset --soft <scope> && git reset`.
 3. One `git add <explicit paths>` + commit per concern, mirroring the default branch's grouping and order, dependencies first (schema → api → ui → e2e/docs) so the branch bisects. Each commit is one united change that stands alone and typechecks — merge a group that can't into the one it needs; never squash merely for fewer commits. Files that don't partition without hunk splits → ask: merge groups / keep separate / stop. Each `git commit` is its own Bash call, never the tail of a chain, so the commit gate's "rerun the exact command" replays only the commit.
 4. Messages per step 8.
@@ -94,7 +94,7 @@ Report: old hashes gone; `git reset --hard <OLD>` (print the hash) undoes the re
 
 ## 8. Commit message
 
-For changes still uncommitted after step 7 (with `c`/`p` after a squash, step 8 already ran inside it). Readable by humans and LLMs: `type(scope): subject` ≤ 72 chars; body a few lines — what changed and why, pointing to the docs from step 5; one united change per commit, split when changes span concerns; match recent `git log` style. Draft only; with `c`/`p`, commit with explicit paths, then push per Arguments. The commit runs as its own Bash call for the same reason.
+For changes still uncommitted after step 7 (with `c` after a squash, step 8 already ran inside it). Readable by humans and LLMs: `type(scope): subject` ≤ 72 chars; body a few lines — what changed and why, pointing to the docs from step 5; one united change per commit, split when changes span concerns; match recent `git log` style. Draft only; with `c`, commit with explicit paths, then push if `--p`. The commit runs as its own Bash call for the same reason.
 
 ## 9. Report
 
@@ -107,8 +107,7 @@ End every wrap with this help block:
 
 ```
 /wrap            sweep · review · docs · gates · draft only
-/wrap c|commit   + commit
-/wrap p|push     + commit and fast-forward push
-/wrap s|squash   regroup local commits by concern
+/wrap c|commit   + commit            c --p: and fast-forward push
+/wrap s|squash   regroup local commits by concern   s --p: and push
 /wrap s --f      whole branch, then --force-with-lease (asks first)
 ```

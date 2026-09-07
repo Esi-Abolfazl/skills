@@ -30,7 +30,7 @@ case "$EVENT" in
     [[ -e "$MARK" ]] && exit 0
     touch "$MARK"
     jq -n '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",
-      permissionDecisionReason:"Commit gate (soft, fires once per turn): commits go through /wrap. Do it yourself now — do NOT ask the user and do NOT stop: invoke the Skill tool with skill \"wrap\" and args \"c\" (or \"p\" to push); wrap sweeps, verifies, and commits for you. If the Skill tool is not available to you (e.g. you are a subagent), simply rerun this exact command — it now passes."}}'
+      permissionDecisionReason:"Commit gate (soft, fires once per turn): commits go through /wrap. Do it yourself now — do NOT ask the user and do NOT stop: invoke the Skill tool with skill \"wrap\" and args \"c\" (or \"c --p\" to push); wrap sweeps, verifies, and commits for you. If the Skill tool is not available to you (e.g. you are a subagent), simply rerun this exact command — it now passes."}}'
     ;;
 esac
 exit 0
