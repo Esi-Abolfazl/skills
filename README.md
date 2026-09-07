@@ -18,7 +18,7 @@ npx skills add Esi-Abolfazl/skills --skill pr-summary -g -a claude-code -y
 |---|---|
 | [brand-identity](skills/brand-identity/SKILL.md) | Runs brand identity work end to end, deepest on logos: positioning and a competitor/cliché scan, 3+ logo concepts, one built out into color/type/imagery and mockups, delivered on a single presentation board. Every legibility and contrast claim is backed by rendered files; refreshes inventory recognized equity before redesigning. |
 | [pr-summary](skills/pr-summary/SKILL.md) | Turns a PR — or a work item's PR bundle — from Azure DevOps or GitHub into one HTML page: why the change exists, how it works, what changed. Whole picture on the first screen, never a wall of diff rows. |
-| [wrap](skills/wrap/SKILL.md) | Closes a session: sweeps leftovers, retires debt, syncs docs, runs the repo's gates, regroups work-branch commits by concern, drafts the commit message. Bare `/wrap` is draft-only; `c` commits, `p` pushes, `s` squashes. Ships a commit gate hook (see below). |
+| [wrap](skills/wrap/SKILL.md) | Closes a session: sweeps leftovers, reviews the diff with the `reviewing-changes` skill and applies its findings, retires debt, syncs docs, runs the repo's gates, regroups work-branch commits by concern, drafts the commit message. Bare `/wrap` is draft-only; `c` commits, `p` pushes, `s` squashes. Ships a commit gate hook (see below); expects `reviewing-changes` installed as a skill (not bundled here). |
 | [task-summary](skills/task-summary/SKILL.md) | Pulls a work item or issue into a readable page: description as written, comments in order, screenshots embedded. Also creates and edits items from session findings; descriptions can be bilingual (full text + short summary). |
 
 ## Connecting

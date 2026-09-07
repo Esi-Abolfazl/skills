@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Dry run of /wrap step 6 (Squash) against a throwaway repo with a bare "remote".
+# Dry run of /wrap step 2 (review snapshot) and step 7 (Squash) against a throwaway repo with a bare "remote".
 # Replays the skill's exact git commands for the local scope and the --f scope,
 # then provokes each guard. Prints PASS/FAIL per assertion; exit 1 on any FAIL.
 set -u
@@ -47,6 +47,18 @@ check "default branch detected from remote HEAD"          '[ "$DEF" = main ]'
 check "upstream is an ancestor of HEAD"                   'git merge-base --is-ancestor "$REMOTE" HEAD'
 check "no merge commits in BASE..HEAD"                    '[ -z "$(git rev-list --merges "$BASE"..HEAD)" ]'
 check "default scope = nearer of REMOTE/BASE (REMOTE)"    'git merge-base --is-ancestor "$BASE" "$REMOTE"'
+SCOPE=$REMOTE
+
+# =============================== step 2: review snapshot ($TREE) =======================
+printf 'x\n' >>docs/notes.md; echo junk >untracked.tmp; echo ign >ignored.log; printf '*.log\n' >.gitignore
+TREE=$(GIT_INDEX_FILE=$(mktemp -u) sh -c 'git read-tree HEAD && git add -A && git write-tree; rm -f "$GIT_INDEX_FILE"')
+check "snapshot: a tree object, not a commit"              '[ "$(git cat-file -t "$TREE")" = tree ]'
+check "snapshot: uncommitted tracked edit included"        'git diff "$SCOPE" "$TREE" -- docs/notes.md | grep -q "^+x$"'
+check "snapshot: untracked file included"                  'git grep -q junk "$TREE" -- untracked.tmp'
+check "snapshot: ignored file excluded"                    '! git grep -q ign "$TREE" -- ignored.log 2>/dev/null'
+check "snapshot: local commits above SCOPE included"       'git diff "$SCOPE" "$TREE" -- api/band.ts | grep -q "band = 2"'
+check "snapshot: real index and working tree untouched"    'git diff --cached --quiet && [ "$(git status --porcelain | wc -l | tr -d " ")" = 3 ]'
+git checkout -q docs/notes.md; rm -f untracked.tmp ignored.log .gitignore
 
 # =============================== local scope (bare /wrap or `s`) =======================
 printf 'x\n' >>docs/notes.md                       # an uncommitted wrap edit, tracked file
