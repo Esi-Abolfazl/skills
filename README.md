@@ -157,6 +157,7 @@ uv run skills/task-summary/sanitize.py selftest
 uv run skills/iran-stores/iran_stores.py selftest   # every store module, offline
 uv run skills/youtube-video-review/quotes.py selftest
 claude plugin validate . && claude plugin test mods/usage-band   # the marketplace and the usage-band mod
+node mods/usage-band/bench/parity.mjs         # usage-band's resumed scan equals a whole-file scan, on your largest transcripts
 ```
 
 Mods run from this checkout once the folder is added as a marketplace; edits then go live with `/reload-plugins`, no reinstall:

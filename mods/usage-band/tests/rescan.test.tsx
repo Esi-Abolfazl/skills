@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
+import { SCAN_SH } from '../hooks/scan'
 import { bandRows } from './drawn'
 
 const BAND = { component: 'AbovePrompt', props: { hasSurvey: false, isWorking: false, maxRows: 6, bodyColumns: 200, scroll: { offset: 0, bodyRows: 6 } } } as const
@@ -14,7 +15,7 @@ describe('rescan', () => {
     on('fs.exists', () => ({ value: false }))
     on('process.run', (_$, e) => {
       argvs.push([...e.argv])
-      const out = e.argv[0] === 'find' ? '/home/me/.claude/projects/-p/abc.jsonl\n' : e.argv[0] === 'awk' ? SCAN : ''
+      const out = e.argv[0] === 'find' ? '/home/me/.claude/projects/-p/abc.jsonl\n' : e.argv[2] === SCAN_SH ? SCAN : ''
       return { value: { exitCode: 0, stdout: out, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
     })
     on('session.usage', (_$, e) => ({
@@ -36,8 +37,9 @@ describe('rescan', () => {
     // A path the engine reports that no longer exists is looked up again by id.
     await $.classic.UserPromptSubmit({ prompt: 'hi', transcript_path: '/gone.jsonl' } as never)
 
-    expect(argvs.find(a => a[0] === 'find')).toEqual(['find', '/home/me/.claude/projects', '-maxdepth', '2', '-name', 'abc.jsonl'])
-    expect(argvs.find(a => a[0] === 'awk')?.[2]).toBe('/home/me/.claude/projects/-p/abc.jsonl')
+    expect(argvs.find(a => a[0] === 'find')).toEqual(['find', '/home/me/.claude/projects', '-maxdepth', '2', '-name', 'abc.jsonl', '-exec', 'ls', '-t', '{}', '+'])
+    // The scan resumes from the session's state file, kept beside the config, not in the transcript's folder.
+    expect(argvs.find(a => a[2] === SCAN_SH)?.slice(4, 6)).toEqual(['/home/me/.claude/projects/-p/abc.jsonl', '/home/me/.claude/usage-band/abc.state'])
 
     const ui = await $.ui.mount({ plugin: 'usage-band', surface: 'terminal', ...BAND } as never)
     await ui.resize({ columns: 200, rows: 4, in: 'band' } as never)

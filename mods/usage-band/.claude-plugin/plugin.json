@@ -1,6 +1,6 @@
 {
   "name": "usage-band",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Pill band above the prompt: 5h/7d limits, tokens, context, compactions, agent time, cost, tests",
   "types": "./types/index.d.ts",
   "author": {
