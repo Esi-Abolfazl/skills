@@ -3,7 +3,7 @@ import type { EngineInterface, Register, RenderChildren } from 'claude-code'
 
 import type { Stats } from '../types'
 import { bandSvg, bandText, bandWidth, fmtSpan, fmtTokens } from './pills'
-import { NO_SCAN, SCAN_AWK, parseScan } from './scan'
+import { NO_SCAN, SCAN_AWK, SCAN_SH, parseScan } from './scan'
 import { isCode, isTestCommand, testOutcome } from './testrun'
 import { ACCENT, ALERT } from './cells'
 import { buildView, layouts } from './view'
@@ -27,14 +27,16 @@ const load = async ($: EngineInterface): Promise<Stats> => {
 // The transcript is the one record of the whole session (turns before this band loaded, reloads,
 // compactions), so tokens, agent time and compactions are read from it, never kept as counters.
 // Awaited by the hook that asks: work a hook leaves running is cut off when its dispatch ends.
-// shortcut: rereads the whole transcript each turn (~3s at 80 MB, waited on after the turn's own work); scan only the bytes past the last offset if that gets slow.
+// Each scan reads only the bytes past the last one (SCAN_SH), its state in <config>/usage-band/<session id>.state.
 // The transcript is <config>/projects/<cwd, mangled>/<session id>.jsonl; found by id, not by re-deriving the mangling.
+const configDir = async ($: EngineInterface) => (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${await $.env.get('HOME')}/.claude`
+
 async function findTranscript($: EngineInterface): Promise<string> {
   const known = (await load($)).transcript
   if (known !== '' && (await $.fs.exists(known).catch(() => false))) return known
-  const config = (await $.env.get('CLAUDE_CONFIG_DIR')) ?? `${await $.env.get('HOME')}/.claude`
   const id = await $.session.id()
-  const r = await $.process.run(['find', `${config}/projects`, '-maxdepth', '2', '-name', `${id}.jsonl`])
+  // Copies of a session's transcript can sit under other project folders; the one being written is the newest.
+  const r = await $.process.run(['find', `${await configDir($)}/projects`, '-maxdepth', '2', '-name', `${id}.jsonl`, '-exec', 'ls', '-t', '{}', '+'])
   const path = r.stdout.split('\n')[0]?.trim() ?? ''
   if (path !== '') await update($, stats, s => ({ ...EMPTY, ...s, transcript: path }))
   return path
@@ -45,8 +47,10 @@ const fail = ($: EngineInterface, scanError: string) => update($, stats, s => ({
 async function rescan($: EngineInterface) {
   const transcript = await findTranscript($)
   if (transcript === '') return fail($, 'transcript not found')
-  const r = await $.process.run(['awk', SCAN_AWK, transcript])
-  if (r.exitCode !== 0) return fail($, `awk exited ${r.exitCode}: ${r.stderr.slice(0, 120)}`)
+  const stateFile = `${await configDir($)}/usage-band/${await $.session.id()}.state`
+  // A session's first scan reads the whole transcript (~2.5 s at 96 MB); the limit leaves room for far larger ones.
+  const r = await $.process.run(['/bin/sh', '-c', SCAN_SH, 'sh', transcript, stateFile, SCAN_AWK], { timeoutMs: 120_000 })
+  if (r.exitCode !== 0) return fail($, `scan exited ${r.exitCode}: ${r.stderr.slice(0, 120)}`)
   const scan = parseScan(r.stdout)
   // A local estimate (no API call): the window /context measures against, and where auto-compact runs.
   const breakdown = (await $.session.usage({ breakdown: 'summary' }).catch(() => undefined))?.context.breakdown
@@ -82,6 +86,8 @@ export const register: Register = on => {
     // The cost so far is the baseline the next turn's own cost is measured from.
     const usd = (await $.session.usage().catch(() => undefined))?.cost?.usd
     await update($, stats, s => ({ ...EMPTY, ...s, costBase: usd ?? s.costBase }))
+    // Scan state of sessions untouched for two weeks is only a cache: a resumed one rescans in full.
+    await $.process.run(['find', `${await configDir($)}/usage-band`, '-name', '*.state*', '-mtime', '+14', '-delete']).catch(() => undefined)
     await refresh($)
     return next(e)
   }).catch(($, e, next) => next(e))
