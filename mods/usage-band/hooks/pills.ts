@@ -171,6 +171,11 @@ const gridCols = (columns: Column[]) => columns.map(c => c.map(cellPills)).filte
 const natural = (cols: Pill[][][]) => cols.map(c => Math.max(...c.map(cellWidth)))
 const sum = (ws: number[], gaps: number) => ws.reduce((a, w) => a + w, 0) + Math.max(0, gaps) * GAP
 
+// The desktop gives the band's slot in columns (bodyColumns), not pixels. Measured: 94 columns
+// = ~817px, 58 columns = ~515px. Not a flat factor (8.6px a column left ~18px bare at 58), so a
+// line through both. shortcut: if the desktop changes its font or padding, measure again.
+export const slotPx = (columns: number) => Math.floor(columns * 8.4 + 28)
+
 // The narrowest a set of grids can be drawn without scaling.
 export const bandWidth = (...grids: Column[][]) => Math.max(1, ...grids.map(g => sum(natural(gridCols(g)), gridCols(g).length - 1)))
 

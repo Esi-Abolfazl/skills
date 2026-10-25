@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderChildren } from 'claude-code'
 
 import type { Stats } from '../types'
-import { bandSvg, bandText, bandWidth, fmtSpan, fmtTokens } from './pills'
+import { bandSvg, bandText, bandWidth, fmtSpan, fmtTokens, slotPx } from './pills'
 import { NO_SCAN, SCAN_AWK, parseScan } from './scan'
 import { isCode, isTestCommand, testOutcome } from './testrun'
 import { ACCENT, ALERT } from './cells'
@@ -188,9 +188,7 @@ export const register: Register = on => {
     // so the chips would not line up there.
     if ('Svg' in table) {
       const { Svg } = table as unknown as { Svg: SvgEl }
-      // The slot's pixel width is not given, only bodyColumns: measured at 94 columns = ~817px, ~8.7px each.
-      // shortcut: a fixed factor; if the desktop changes its font, measure again (bodyColumns against the slot width).
-      const slot = Math.floor(e.props.bodyColumns * 8.6)
+      const slot = slotPx(e.props.bodyColumns)
       const all = layouts(v)
       const grids = all.find(g => bandWidth(...g) <= slot) ?? all[all.length - 1]!
       const svg = bandSvg(grids, slot)
