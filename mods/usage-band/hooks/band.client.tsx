@@ -28,7 +28,7 @@ export default function Band(props: Props, surface: ClientSurface<State>) {
   })
 
   const seg = (s: Seg, accent: string, barExtra: number, k: number) => {
-    if (s.kind === 'icon') return <Text key={`${k}`} color={accent}>{GLYPH[s.name] ?? '•'}</Text>
+    if (s.kind === 'icon') return <Text key={`${k}`} color={s.dim ? undefined : accent} dimColor={s.dim}>{GLYPH[s.name] ?? '•'}</Text>
     if (s.kind === 'sep') return <Text key={`${k}`} dimColor>│</Text>
     if (s.kind === 'text') return <Text key={`${k}`} bold={s.bold || s.warn} dimColor={s.dim} color={s.warn ? ALERT.warn : undefined}>{s.s}</Text>
     if (s.kind === 'spark') {
