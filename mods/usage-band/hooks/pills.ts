@@ -101,7 +101,9 @@ const lineWidth = (segs: Seg[]) => segs.reduce((w, s) => w + segWidth(s), 0) + M
 export const pillWidth = (p: Pill) => Math.ceil(PAD * 2 + Math.max(lineWidth(p.segs), p.sub ? lineWidth(p.sub) : 0))
 
 // The alert thresholds: amber from 60%, red from 85%.
-export const level = (pct: number): Alert | undefined => (pct >= 85 ? 'hot' : pct >= 60 ? 'warn' : undefined)
+const WARN = 60
+const HOT = 85
+export const level = (pct: number): Alert | undefined => (pct >= HOT ? 'hot' : pct >= WARN ? 'warn' : undefined)
 
 // Width past the pill's own goes into its first bar, so a stretched meter reads as a longer meter.
 function drawPill(p: Pill, x: number, y: number, w = pillWidth(p), h = H): string {
@@ -232,11 +234,12 @@ function style(): string {
 // A meter's colour: grey while there is room, then amber warming through orange to red as it
 // fills, so colour on the band only ever means attention. Grey never blends into the warm
 // colours (that mix reads as brown); it steps to amber, and only saturated colours blend.
-const GREY = '#9a988f'
+// Amber and red sit on level()'s thresholds, so a meter turns when its card's alert does.
+export const GREY = '#9a988f'
 const STOPS: [number, [number, number, number]][] = [
-  [50, [0xf5, 0xb5, 0x44]],
-  [70, [0xf2, 0x80, 0x3a]],
-  [90, [0xe8, 0x48, 0x3f]],
+  [WARN, [0xf5, 0xb5, 0x44]],
+  [(WARN + HOT) / 2, [0xf2, 0x80, 0x3a]],
+  [HOT, [0xe8, 0x48, 0x3f]],
 ]
 export function meterColor(pct: number): string {
   const [first, ...rest] = STOPS

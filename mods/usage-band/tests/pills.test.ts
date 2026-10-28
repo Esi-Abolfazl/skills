@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { BAR, GAP, H, HOUR, PAD, bandSvg, bandText, bandWidth, fmtSpan, fmtTokens, pillWidth, windowMark } from '../hooks/pills'
+import { BAR, GAP, GREY, H, HOUR, PAD, bandSvg, bandText, bandWidth, fmtSpan, fmtTokens, level, meterColor, pillWidth, windowMark } from '../hooks/pills'
 import type { Pill } from '../hooks/pills'
 
 describe('pills', () => {
@@ -22,6 +22,10 @@ describe('pills', () => {
     expect(windowMark('five_hour', resets, now)).toBe(50)
     expect(windowMark('spend_limit', resets, now)).toBe(undefined)
     expect(windowMark('five_hour', undefined, now)).toBe(undefined)
+  })
+
+  test('a meter turns colour where its card turns alert, not before', () => {
+    for (const pct of [0, 59, 60, 72, 84, 85, 100]) expect(meterColor(pct) === GREY).toBe(level(pct) === undefined)
   })
 
   test('a near-limit card is tinted, a calm one not', () => {
