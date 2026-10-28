@@ -70,7 +70,7 @@ function limitPill(l: Limit | undefined, detail: Detail): Pill | undefined {
       { kind: 'bar', pct: l.pct, mark: l.mark },
       { kind: 'text', s: `${pct}%`, bold: true },
       ...(detail >= 2 && l.fullIn !== undefined ? ([{ kind: 'text', s: `full ${fmtSpan(l.fullIn)}`, warn: true }] as const) : []),
-      ...(l.left !== undefined ? ([{ kind: 'sep' }, { kind: 'icon', name: 'history' }, { kind: 'text', s: fmtSpan(l.left), dim: true }] as const) : []),
+      ...(l.left !== undefined ? ([{ kind: 'sep' }, { kind: 'icon', name: 'history', dim: true }, { kind: 'text', s: fmtSpan(l.left), dim: true }] as const) : []),
     ],
   }
 }
@@ -139,7 +139,7 @@ export function buildView(s: Stats, usage: SessionUsage, now: number): View {
     title: scanError ? `Could not read the transcript: ${scanError}` : `Agent time ${fmtSpan(scan.agentMs)} over ${scan.turns} turns`,
     segs: [
       ...(scanError ? ([{ kind: 'text', s: '⚠', bold: true }] as const) : []),
-      { kind: 'icon', name: 'timer' },
+      { kind: 'icon', name: 'bot' },
       { kind: 'text', s: 'agent', dim: true },
       { kind: 'text', s: fmtSpan(scan.agentMs), bold: true },
       { kind: 'text', s: detail >= 1 ? `${scan.turns} ${scan.turns === 1 ? 'turn' : 'turns'}` : `${scan.turns}t`, dim: true },
@@ -177,7 +177,7 @@ export function buildView(s: Stats, usage: SessionUsage, now: number): View {
         { kind: 'icon', name: 'coin' },
         { kind: 'text', s: `$${usage.cost.usd.toFixed(2)}`, bold: true },
         ...(detail >= 1 && last !== undefined ? ([{ kind: 'text', s: `last $${last.toFixed(2)}`, dim: true }] as const) : []),
-        ...(detail >= 1 && avg !== undefined ? ([{ kind: 'text', s: `⌀ $${avg.toFixed(2)}`, dim: true }] as const) : []),
+        ...(detail >= 2 && avg !== undefined ? ([{ kind: 'text', s: `⌀ $${avg.toFixed(2)}`, dim: true }] as const) : []),
         ...(detail >= 2 && turnCosts.length > 1 ? ([{ kind: 'spark', values: turnCosts }] as const) : []),
       ],
     }

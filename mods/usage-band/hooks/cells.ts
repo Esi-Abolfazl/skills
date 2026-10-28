@@ -14,7 +14,7 @@ export const GLYPH: Record<string, string> = {
   download: '↓',
   layers: '≋',
   fold: '⇕',
-  timer: '◷',
+  bot: '◷',
   coin: '$',
   check: '✓',
   cross: '✗',

@@ -4,13 +4,17 @@ import type { ClientSurface } from 'claude-code'
 
 import { ACCENT, ALERT, BAR_CELLS, GLYPH, SECTION, hit, layCells, pickLayout, tint } from './cells'
 import type { Placed } from './cells'
+import { level } from './pills'
 import type { Column, Seg } from './pills'
 
 type Props = { layouts: Column[][][] }
 type State = { hover?: string }
 
 const SPARK = '▁▂▃▄▅▆▇█'
-const level = (pct: number) => (pct >= 85 ? ALERT.hot : pct >= 60 ? ALERT.warn : undefined)
+const meter = (pct: number) => {
+  const a = level(pct)
+  return a && ALERT[a]
+}
 
 export default function Band(props: Props, surface: ClientSurface<State>) {
   const { Box, Text } = surface.elements
@@ -28,7 +32,7 @@ export default function Band(props: Props, surface: ClientSurface<State>) {
   })
 
   const seg = (s: Seg, accent: string, barExtra: number, k: number) => {
-    if (s.kind === 'icon') return <Text key={`${k}`} color={accent}>{GLYPH[s.name] ?? '•'}</Text>
+    if (s.kind === 'icon') return <Text key={`${k}`} color={s.dim ? undefined : accent} dimColor={s.dim}>{GLYPH[s.name] ?? '•'}</Text>
     if (s.kind === 'sep') return <Text key={`${k}`} dimColor>│</Text>
     if (s.kind === 'text') return <Text key={`${k}`} bold={s.bold || s.warn} dimColor={s.dim} color={s.warn ? ALERT.warn : undefined}>{s.s}</Text>
     if (s.kind === 'spark') {
@@ -41,7 +45,7 @@ export default function Band(props: Props, surface: ClientSurface<State>) {
     const at = (pct?: number) => (pct === undefined ? -1 : Math.min(w - 1, Math.round((pct / 100) * (w - 1))))
     const mark = at(s.mark)
     const line = at(s.line)
-    const color = level(s.pct) ?? accent
+    const color = meter(s.pct) ?? accent
     return (
       <Text key={`${k}`}>
         {Array.from({ length: w }, (_, i) =>
