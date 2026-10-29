@@ -135,13 +135,13 @@ function drawPill(p: Pill, x: number, y: number, w = pillWidth(p), h = H): strin
     const id = `t${Math.round(x)}-${Math.round(y)}`
     out +=
       `<filter id="${id}c" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.5"/></filter>` +
-      `<rect fill="#000" fill-opacity=".55" filter="url(#${id}c)" x="${tx}" y="${ty + 2}" width="${s}" height="${s}" rx="${r}"/>` +
+      `<rect class="tsh" filter="url(#${id}c)" x="${tx}" y="${ty + 2}" width="${s}" height="${s}" rx="${r}"/>` +
       `<rect class="acc dot" x="${tx}" y="${ty}" width="${s}" height="${s}" rx="${r}"/>` +
       `<radialGradient id="${id}e"><stop offset=".35" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff"/></radialGradient>` +
       `<mask id="${id}m"><rect fill="url(#${id}e)" x="${tx}" y="${ty}" width="${s}" height="${s}"/></mask>` +
       `<rect class="acc" fill-opacity=".1" mask="url(#${id}m)" x="${tx}" y="${ty}" width="${s}" height="${s}" rx="${r}"/>` +
       `<linearGradient id="${id}d" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity=".12"/></linearGradient>` +
-      `<rect fill="url(#${id}d)" x="${tx}" y="${ty}" width="${s}" height="${s}" rx="${r}"/>`
+      `<rect class="lit" fill="url(#${id}d)" x="${tx}" y="${ty}" width="${s}" height="${s}" rx="${r}"/>`
   }
   // A tall card centres each line on its own row's middle, so its lines sit level with the cards beside it.
   const two = p.sub !== undefined && h > H
@@ -218,12 +218,14 @@ function style(): string {
   let light = `.t,.b,.w{fill:#33322e;font:12px ${font}}.b,.w{font-weight:700}.d{fill:#8a8983;font:12px ${font}}.w{fill:#b97a12}.spark{fill:#a8831a;fill-opacity:.75}.sep{stroke:#1f1e1d;stroke-opacity:.2}.ic{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}`
   let dark = `.t,.b{fill:#ecebe6}.d{fill:#9c9b95}.w{fill:#e9b44c}.spark{fill:#e0bb52;fill-opacity:.75}.sep{stroke:#fff;stroke-opacity:.2}`
   for (const [tone, [, ic, icDark]] of Object.entries(TONES)) {
-    light += `.${tone} .acc{fill:${ic}}.${tone} .ic{stroke:${ic}}`
+    light += `.${tone}{--tone:${ic}}.${tone} .acc{fill:${ic}}.${tone} .ic{stroke:${ic}}`
     dark += `.${tone} .acc{fill:${icDark}}.${tone} .ic{stroke:${icDark}}`
   }
-  light += `.bg{fill:#1f1e1d;fill-opacity:.06}.dot{fill-opacity:.22}.ic.dim{stroke:#8a8983;opacity:.55}.alert.warn .acc{fill:var(--al,#c08a1e)}.alert.warn .bg{fill:var(--al,#c08a1e);fill-opacity:.14}.alert.warn .ic:not(.dim){stroke:var(--al,#c08a1e)}.alert.hot .acc{fill:var(--al,#cf4a34)}.alert.hot .bg{fill:var(--al,#cf4a34);fill-opacity:.14}.alert.hot .ic:not(.dim){stroke:var(--al,#cf4a34)}.ic-sh{fill:none;stroke:#000;stroke-opacity:.3;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}`
+  // On a light card the tile's black shadow, dark corner and the icon's under-shadow read as a smudge:
+  // light mode shades the tile in its own colour instead, and dark mode puts them back.
+  light += `.bg{fill:#1f1e1d;fill-opacity:.06}.dot{fill-opacity:.14}.ic.dim{stroke:#8a8983;opacity:.55}.alert.warn .acc{fill:var(--al,#c08a1e)}.alert.warn .bg{fill:var(--al,#c08a1e);fill-opacity:.14}.alert.warn .ic:not(.dim){stroke:var(--al,#c08a1e)}.alert.hot .acc{fill:var(--al,#cf4a34)}.alert.hot .bg{fill:var(--al,#cf4a34);fill-opacity:.14}.alert.hot .ic:not(.dim){stroke:var(--al,#cf4a34)}.ic-sh{fill:none;stroke:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}.tsh{fill:var(--tone);fill-opacity:.18}.lit{display:none}.alert.warn{--tone:var(--al,#c08a1e)}.alert.hot{--tone:var(--al,#cf4a34)}`
   dark += `.ic.dim{stroke:#9c9b95}.alert.warn .acc{fill:var(--al,#e9b44c)}.alert.warn .bg{fill:var(--al,#e9b44c);fill-opacity:.14}.alert.warn .ic:not(.dim){stroke:var(--al,#e9b44c)}.alert.hot .acc{fill:var(--al,#ff7a63)}.alert.hot .bg{fill:var(--al,#ff7a63);fill-opacity:.14}.alert.hot .ic:not(.dim){stroke:var(--al,#ff7a63)}`
-  dark += `.bg{fill:#fff;fill-opacity:.06}`
+  dark += `.bg{fill:#fff;fill-opacity:.06}.ic-sh{stroke:#000;stroke-opacity:.3}.tsh{fill:#000;fill-opacity:.55}.lit{display:inline}.dot{fill-opacity:.22}`
   return `${light}@media (prefers-color-scheme:dark){${dark}}`
 }
 
