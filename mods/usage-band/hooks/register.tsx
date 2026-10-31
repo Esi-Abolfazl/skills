@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderChildren } from 'claude-code'
 
-import type { Stats } from '../types'
+import type { RateLimit, Stats } from '../types'
 import { bandSvg, bandText, bandWidth, fmtSpan, fmtTokens, meterColor, slotPx } from './pills'
 import { NO_SCAN, SCAN_AWK, SCAN_SH, parseScan } from './scan'
 import { isCode, isTestCommand, testOutcome } from './testrun'
@@ -42,6 +42,26 @@ async function findTranscript($: EngineInterface): Promise<string> {
   const path = r.stdout.split('\n')[0]?.trim() ?? ''
   if (path !== '') await update($, stats, s => ({ ...EMPTY, ...s, transcript: path }))
   return path
+}
+
+// The last rate limits, in one file for every session, overwritten in place, so it never grows.
+const limitsFile = async ($: EngineInterface) => `${await configDir($)}/usage-band/limits.json`
+async function readKeptLimits($: EngineInterface): Promise<RateLimit[] | undefined> {
+  const r = await $.process.run(['cat', await limitsFile($)]).catch(() => undefined)
+  if (r?.exitCode !== 0) return undefined
+  try {
+    const kept = JSON.parse(r.stdout)
+    return Array.isArray(kept) ? kept : undefined
+  } catch {
+    return undefined
+  }
+}
+// Written only when the reading changed, so at most once a turn.
+async function keepLimits($: EngineInterface, limits: RateLimit[]) {
+  const json = JSON.stringify(limits.map(({ kind, percentUsed, resetsAt }) => ({ kind, percentUsed, resetsAt })))
+  if (json === JSON.stringify((await load($)).lastLimits ?? null)) return
+  await $.process.run(['/bin/sh', '-c', 'mkdir -p "$(dirname "$1")" && printf %s "$2" > "$1"', 'sh', await limitsFile($), json])
+  await update($, stats, s => ({ ...EMPTY, ...s, lastLimits: JSON.parse(json) }))
 }
 
 const fail = ($: EngineInterface, scanError: string) => update($, stats, s => ({ ...EMPTY, ...s, scanError }))
@@ -88,7 +108,8 @@ export const register: Register = on => {
     await $.command.register({ name: 'usage-band', description: 'Open the usage details pane (limits, context, tokens, turns, tests)' })
     // The cost so far is the baseline the next turn's own cost is measured from.
     const usd = (await $.session.usage().catch(() => undefined))?.cost?.usd
-    await update($, stats, s => ({ ...EMPTY, ...s, costBase: usd ?? s.costBase }))
+    const kept = await readKeptLimits($)
+    await update($, stats, s => ({ ...EMPTY, ...s, costBase: usd ?? s.costBase, lastLimits: kept ?? s.lastLimits }))
     // Scan state of sessions untouched for two weeks is only a cache: a resumed one rescans in full.
     await $.process.run(['find', `${await configDir($)}/usage-band`, '-name', '*.state*', '-mtime', '+14', '-delete']).catch(() => undefined)
     await refresh($)
@@ -131,7 +152,9 @@ export const register: Register = on => {
   on('turn.complete', async ($, e, next) => {
     const done = await next(e)
     if (e.agentId !== undefined) return done
-    const usd = (await $.session.usage().catch(() => undefined))?.cost?.usd
+    const usage = await $.session.usage().catch(() => undefined)
+    if (usage && usage.rateLimits.length > 0) await keepLimits($, usage.rateLimits).catch(() => undefined)
+    const usd = usage?.cost?.usd
     if (usd !== undefined) {
       await update($, stats, x => {
         const s = { ...EMPTY, ...x }
@@ -357,11 +380,14 @@ export const register: Register = on => {
           join(...limits.map(l => `${l.kind === 'five_hour' ? '5h' : '7d'} ${Math.round(l.pct)}%`)),
           limits.length === 0
             ? [note('none', 'No reading yet.')]
-            : limits.flatMap(l => [
+            : [
+                ...(limits.some(l => l.stale) ? [note('stale', 'Last seen in an earlier session: no reply here yet.')] : []),
+                ...limits.flatMap(l => [
                 headline(`h-${l.kind}`, `${l.kind === 'five_hour' ? '5-hour' : '7-day'} · ${Math.round(l.pct)}% used`, l.left !== undefined ? `resets in ${fmtSpan(l.left)}` : ''),
                 bar(`b-${l.kind}`, [{ n: l.pct, color: meterColor(l.pct) }], 100, { at: l.mark }),
                 ...(l.fullIn !== undefined ? [note(`f-${l.kind}`, `At this pace it is full in ~${fmtSpan(l.fullIn)}, before the reset.`, true)] : []),
               ]),
+              ],
         )}
         {card('tokens', 'Tokens', join(`in ${fmtTokens(t.input + t.cacheWrite)}`, `out ${fmtTokens(t.output)}`), [
           headline('h', `${fmtTokens(t.input + t.cacheWrite + t.output)} sent and received`, v.cache !== undefined ? `${Math.round(v.cache)}% cached` : ''),

@@ -24,6 +24,20 @@ describe('view', () => {
     expect(l.fullIn).toBe(undefined)
     expect(l.alert).toBe('hot')
   })
+  test('before a reply, the last kept limits show faded, without pace; a reset window drops out', () => {
+    const at = (h: number) => new Date(NOW + h * HOUR).toISOString()
+    const kept = [
+      { kind: 'five_hour', percentUsed: 70, resetsAt: at(-1) },
+      { kind: 'seven_day', percentUsed: 50, resetsAt: at(48) },
+    ]
+    const v = buildView({ ...base, lastLimits: kept }, usage(), NOW)
+    expect(v.limits[0]).toBe(undefined)
+    expect(v.limits[1]!.stale).toBe(true)
+    expect(v.limits[1]!.fullIn).toBe(undefined)
+    const fresh = buildView({ ...base, lastLimits: kept }, usage({ rateLimits: [{ kind: 'seven_day', percentUsed: 52, resetsAt: at(48) }] }), NOW)
+    expect(fresh.limits[1]!.stale).toBe(undefined)
+    expect(fresh.limits[1]!.pct).toBe(52)
+  })
   test('context forecast: turns since the last compaction, at their average rise', () => {
     const log = [100_000, 150_000, 200_000].map((ctx, i) => ({ startAt: i, ms: 1, ctx }))
     const s: Stats = { ...base, compactAt: 400_000, maxTokens: 500_000, scan: { ...NO_SCAN, log: [{ startAt: 0, ms: 1, ctx: 480_000 }, ...log], sinceCompact: 3 } }

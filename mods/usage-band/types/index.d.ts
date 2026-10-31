@@ -3,6 +3,8 @@ export type Tokens = { input: number; output: number; cacheRead: number; cacheWr
 // sinceCompact: turns since the last compaction (all of them when there was none).
 export type TurnLog = { startAt: number; ms: number; ctx: number }
 export type Scan = { agentMs: number; turns: number; tokens: Tokens; compactions: number; log: TurnLog[]; sinceCompact: number }
+// A rate limit as the engine reports it: kind five_hour or seven_day, percentUsed 0 to 100.
+export type RateLimit = { kind: string; percentUsed: number; resetsAt?: string }
 export type Tests = { state: 'pass' | 'fail' | 'stale'; passed?: number; failed?: number }
 // maxTokens: the window /context measures against (the compaction window, which may be under the model's).
 // scanError: why the last transcript read failed, shown on the band instead of silent zeros.
@@ -16,6 +18,9 @@ export type Stats = {
   scanError?: string
   turnCosts: number[]
   costBase?: number
+  // The last rate limits seen, in any session: the engine reports them only with a reply, so a session
+  // opened or resumed shows these, faded, until its own first one.
+  lastLimits?: RateLimit[]
   // The last test run's outcome, 'stale' once code changed after it; absent before any run.
   tests?: Tests
   // The pane section a clicked card asked for; it opens when clicked.
