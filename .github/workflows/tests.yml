@@ -7,8 +7,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v10.2.0
       - run: bash tests/template-parity.sh
+      - run: bash tests/mod-version.sh selftest
+      - run: bash tests/mod-version.sh "${{ github.event.pull_request.base.sha || github.event.before }}"
       - run: bash skills/wrap/tests/dry-run.sh
       - run: bash skills/wrap/tests/gate.sh
       - run: uv run skills/pr-summary/abridge.py selftest

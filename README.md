@@ -183,6 +183,8 @@ Checks — run the ones for what you changed, from the repo root:
 
 ```bash
 bash tests/template-parity.sh                 # pr-summary and task-summary share one CSS block and one image-host rule, copied by hand
+bash tests/mod-version.sh selftest              # a mod's shipped change needs a plugin.json version bump; this runs the check against a fixture repo
+bash tests/mod-version.sh <base-rev>          # the same check on your branch (default HEAD~1)
 bash skills/wrap/tests/dry-run.sh             # wrap's git mechanics, plus parity with SKILL.md's commands
 bash skills/wrap/tests/gate.sh                # wrap's commit-gate hook
 uv run skills/pr-summary/abridge.py selftest
