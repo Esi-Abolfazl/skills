@@ -1,6 +1,6 @@
 ---
 name: product-purchase-research
-description: Use when the user wants a product recommendation, comparison, or shopping research for something physical to buy — coffee gear, hardware, electronics, cases — including "which should I get" questions, price checks, and availability checks. Not for supplements, vitamins, or other nutrition products (dosing and safety questions are out of scope).
+description: Use when the user wants a product recommendation, comparison, or shopping research for something physical to buy — coffee gear, hardware, electronics, cases — including "which should I get" and "better alternatives to X" questions, price checks, and availability checks. Not for supplements, vitamins, or other nutrition products (dosing and safety questions are out of scope).
 ---
 
 # Product purchase research
@@ -150,6 +150,13 @@ partial, never ✓.
   the candidate that dominates it. A model the user names exactly is
   the shortlist; add at most two alternatives, labelled as such, only
   when it fails the use or a dealbreaker, or no market sells it.
+- **Rank by evidence, not price.** Among candidates that pass the
+  constraints and dealbreakers: technical reviews first (lab or expert
+  testing, such as SoundGuys or RTINGS), then buyer comments, only to
+  add real-use problems and notes the technical reviews missed, then
+  price. A candidate with no technical review is labelled so and ranks
+  below reviewed ones. When none has one (local or unbranded goods),
+  rank by buyer comments and say so.
 - **Saturation check** (skipped when the user names a model exactly):
   the reviews-and-specs subagent, or the controller when it searches
   alone, looks for candidates in two framings that reach different
@@ -378,7 +385,8 @@ pages and specs.
   (warranty, stock, price age, what is unchecked). An offer with no
   page URL says why.
 - One card per option: its name, role (pick, runner-up, budget) and
-  why it fits, then its offers, cheapest buyable first. When the host
+  why it fits, citing its technical review and any buyer-reported
+  problem, then its offers, cheapest buyable first. When the host
   can publish a page, put the cards there and link it; in chat, one
   heading and list per option. Never a table of options.
 - Several destinations priced (section 4): one landed price per

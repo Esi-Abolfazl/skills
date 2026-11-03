@@ -1,6 +1,6 @@
 ---
 name: iran-stores
-description: Use for a price, stock, review, price-history, seller-trust or installment check on an Iranian store (Digikala, Emalls, Torob, Technolife, MasterKala, Khanoumi, Asal Banoo, Shopino, SnappMarket, Okala, Taaghche, Fidibo, 30book, Divar, Sheypoor, Pasavard), and as the Iranian store notes of product-purchase-research. Not for stores outside Iran, or for converting Toman or Rial to another currency.
+description: Use for a price, stock, review, price-history, seller-trust or installment check on an Iranian store (Digikala, Emalls, Torob, Technolife, MasterKala, Khanoumi, Asal Banoo, Shopino, SnappMarket, Okala, Taaghche, Fidibo, 30book, Divar, Sheypoor, Pasavard), and as the Iranian store notes of product-purchase-research. Not for stores outside Iran, for converting Toman or Rial to another currency, or for choosing what to buy (that is product-purchase-research, which loads this).
 ---
 
 # Iranian store reader
