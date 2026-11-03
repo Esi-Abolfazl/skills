@@ -46,12 +46,17 @@ async function findTranscript($: EngineInterface): Promise<string> {
 
 // The last rate limits, in one file for every session, overwritten in place, so it never grows.
 const limitsFile = async ($: EngineInterface) => `${await configDir($)}/usage-band/limits.json`
+const isRateLimit = (l: unknown): l is RateLimit => {
+  const r = l as Partial<RateLimit> | null
+  return typeof r?.kind === 'string' && typeof r.percentUsed === 'number' && (r.resetsAt === undefined || typeof r.resetsAt === 'string')
+}
 async function readKeptLimits($: EngineInterface): Promise<RateLimit[] | undefined> {
   const r = await $.process.run(['cat', await limitsFile($)]).catch(() => undefined)
   if (r?.exitCode !== 0) return undefined
   try {
-    const kept = JSON.parse(r.stdout)
-    return Array.isArray(kept) ? kept : undefined
+    const kept: unknown = JSON.parse(r.stdout)
+    // Shared by every session and version: an entry not in this shape would break every draw.
+    return Array.isArray(kept) ? kept.filter(isRateLimit) : undefined
   } catch {
     return undefined
   }
