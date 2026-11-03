@@ -57,7 +57,8 @@ const ICONS = {
   bot: '<path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
   cross: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
-  flask: '<path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/>',
+  // A conical flask: a wider lip and a neck left open at 15px; the liquid line runs wall to wall.
+  flask: '<path d="M8.5 3.5h7M9.75 3.5v5L5.4 16.4a2.4 2.4 0 0 0 2.1 3.6h9a2.4 2.4 0 0 0 2.1-3.6L14.25 8.5v-5"/><path d="M6.17 15h11.66"/>',
   coin: '<circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/>',
 }
 
