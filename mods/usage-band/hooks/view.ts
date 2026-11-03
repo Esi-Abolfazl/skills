@@ -2,13 +2,14 @@
 // engine's usage. Pure, so tests can drive it without an engine.
 import type { SessionUsage } from 'claude-code'
 
-import type { Stats } from '../types'
+import type { RateLimit, Stats } from '../types'
 import { WINDOWS, fmtSpan, fmtTokens, level, windowMark } from './pills'
 import type { Alert, Column, Pill } from './pills'
 
 export type Detail = 0 | 1 | 2
 
-export type Limit = { kind: string; pct: number; left?: number; mark?: number; fullIn?: number; alert?: Alert }
+// stale: a reading kept from before this session's first reply; its pace is not projected.
+export type Limit = { kind: string; pct: number; left?: number; mark?: number; fullIn?: number; alert?: Alert; stale?: boolean }
 
 const worse = (a?: Alert, b?: Alert): Alert | undefined => (a === 'hot' || b === 'hot' ? 'hot' : a ?? b)
 
@@ -51,6 +52,9 @@ export const cacheRate = (s: Stats) => {
   return all > 0 ? (t.cacheRead / all) * 100 : undefined
 }
 
+// A kept reading is good until its window resets; after that its figure means nothing.
+export const keptLimits = (kept: RateLimit[], now: number) => kept.filter(l => l.resetsAt === undefined || Date.parse(l.resetsAt) > now)
+
 function limitPill(l: Limit | undefined, detail: Detail): Pill | undefined {
   if (l === undefined) return undefined
   const is5h = l.kind === 'five_hour'
@@ -60,6 +64,7 @@ function limitPill(l: Limit | undefined, detail: Detail): Pill | undefined {
     glyph: '',
     alert: l.alert,
     title:
+      (l.stale ? 'Last seen, before this session\'s first reply. ' : '') +
       `${is5h ? '5-hour' : '7-day'} limit: ${pct}% used` +
       (l.left !== undefined ? `, resets in ${fmtSpan(l.left)}` : '') +
       (l.fullIn !== undefined ? `. At this pace it is full in ${fmtSpan(l.fullIn)}, before the reset` : '') +
@@ -68,7 +73,7 @@ function limitPill(l: Limit | undefined, detail: Detail): Pill | undefined {
       { kind: 'icon', name: is5h ? 'gauge' : 'calendar' },
       { kind: 'text', s: is5h ? '5h' : '7d', dim: true },
       { kind: 'bar', pct: l.pct, mark: l.mark },
-      { kind: 'text', s: `${pct}%`, bold: true },
+      { kind: 'text', s: `${pct}%`, bold: !l.stale, dim: l.stale },
       ...(detail >= 2 && l.fullIn !== undefined ? ([{ kind: 'text', s: `full ${fmtSpan(l.fullIn)}`, warn: true }] as const) : []),
       ...(l.left !== undefined ? ([{ kind: 'sep' }, { kind: 'icon', name: 'history', dim: true }, { kind: 'text', s: fmtSpan(l.left), dim: true }] as const) : []),
     ],
@@ -126,7 +131,12 @@ export type View = {
 
 export function buildView(s: Stats, usage: SessionUsage, now: number): View {
   const { scan, scanError, turnCosts } = s
-  const limits = [readLimit(usage, 'five_hour', now), readLimit(usage, 'seven_day', now)]
+  // No reading yet this session: the last one kept, minus any window that has since reset.
+  const stale = usage.rateLimits.length === 0 && (s.lastLimits?.length ?? 0) > 0
+  const live: SessionUsage = stale ? { ...usage, rateLimits: keptLimits(s.lastLimits!, now) as SessionUsage['rateLimits'] } : usage
+  const limits = [readLimit(live, 'five_hour', now), readLimit(live, 'seven_day', now)].map(l =>
+    l && stale ? { ...l, stale: true, fullIn: undefined, alert: level(l.pct) } : l,
+  )
   const context = readContext(s, usage)
   const cache = cacheRate(s)
   const inTokens = scan.tokens.input + scan.tokens.cacheWrite

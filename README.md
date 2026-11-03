@@ -87,7 +87,7 @@ Claude Code plugins that change Claude's own interface. This repo is their marke
 
 | Mod | What it does |
 |---|---|
-| [usage-band](mods/usage-band) | Replaces the band above the prompt with pill cards: 5-hour and 7-day limits (bar, clock tick, reset time, pace warning), tokens in and out with cache rate, context against the compaction window with the compaction count, agent time, cost, and the last test run. Fills the slot's width: two lines when they fit, four when narrow. Clicking a card opens a details pane of collapsible cards (context breakdown with its bar and auto-compact line, limits, tokens, cost, turns, tests) with that card's section open; `/usage-band` opens it too. Draws in the desktop app and the terminal. |
+| [usage-band](mods/usage-band) | Replaces the band above the prompt with pill cards: 5-hour and 7-day limits (bar, clock tick, reset time, pace warning; before a session's first reply, the last reading seen, faded), tokens in and out with cache rate, context against the compaction window with the compaction count, agent time, cost, and the last test run. Fills the slot's width: two lines when they fit, four when narrow. Clicking a card opens a details pane of collapsible cards (context breakdown with its bar and auto-compact line, limits, tokens, cost, turns, tests) with that card's section open; `/usage-band` opens it too. Draws in the desktop app and the terminal. |
 
 Install in the Claude desktop app, no terminal needed (the app keeps itself up to date):
 
