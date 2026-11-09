@@ -60,6 +60,8 @@ is weaker than a cold review, and a fresh session is preferred.
      empty "none" placeholder headings, and a missing diagram/payload example when the plan
      changes architecture or an API/data contract.
 
+**Write it STE-style.** Questions, proposals, findings, steps and handoffs this skill writes follow the checkable subset of ASD-STE100 (Simplified Technical English): one topic per sentence, at most 20 words per sentence in instructions and 25 in descriptions, active voice, present tense, plain words with one meaning, no private shorthand. A question offers concrete options to pick from. Pages, persuasive text and text in the user's voice are out of scope.
+
 ## Output format (exactly this)
 
 ```

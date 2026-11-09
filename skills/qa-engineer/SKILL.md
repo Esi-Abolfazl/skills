@@ -46,6 +46,8 @@ Arguments, if any, narrow the run to one journey, surface (web or API) or endpoi
 
 9. **File and finish.** Send each finding to the adapter's sink; with none named, `finding.md` says how (a handoff per finding in a git repo, else a dated report). Never edit code, never write a board or backlog, never "just fix it". With `dry-run` or the adapter's dry-run switch (`DRY_RUN=1`), file nothing and report filing status as "dry run". Then clean up as `finding.md` describes (delete any `--jar` file), run the adapter's secret check, and end with: findings by severity, the preflight and "isn't a bug" sources read and which expected ones were missing (a missing source widens the risk of a false finding), journeys covered and skipped, dedupe and filing status, cleanup status stated precisely (including anything left behind), the scan result, and an explicit statement that no fix was implemented and nothing was shipped.
 
+**Write it STE-style.** Questions, proposals, findings, steps and handoffs this skill writes follow the checkable subset of ASD-STE100 (Simplified Technical English): one topic per sentence, at most 20 words per sentence in instructions and 25 in descriptions, active voice, present tense, plain words with one meaning, no private shorthand. A question offers concrete options to pick from. Pages, persuasive text and text in the user's voice are out of scope.
+
 ## Common mistakes
 
 | Mistake | Fix |

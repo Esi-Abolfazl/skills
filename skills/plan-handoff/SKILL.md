@@ -61,3 +61,5 @@ kebab-case from the issue. Path: `.claude/handoffs/YYYY-MM-DD-<slug>.md`.
 **4. Report back.**
 State the handoff's path and a one-line summary: never silently. Then return to the
 task that was in progress; do not start planning or executing the handoff yourself.
+
+**Write it STE-style.** Questions, proposals, findings, steps and handoffs this skill writes follow the checkable subset of ASD-STE100 (Simplified Technical English): one topic per sentence, at most 20 words per sentence in instructions and 25 in descriptions, active voice, present tense, plain words with one meaning, no private shorthand. A question offers concrete options to pick from. Pages, persuasive text and text in the user's voice are out of scope.

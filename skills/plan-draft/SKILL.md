@@ -324,3 +324,5 @@ Cap it at ~15 lines; if a category would push past that, keep the riskiest items
 "N more in plan §X". This brief is chat output only: never duplicate it into the plan
 file. Then print the file path, the reviewer's verdict, and what changed after review.
 Tell the requester to set `status: approved` when satisfied, then run `/plan-execute`.
+
+**Write it STE-style.** Questions, proposals, findings, steps and handoffs this skill writes follow the checkable subset of ASD-STE100 (Simplified Technical English): one topic per sentence, at most 20 words per sentence in instructions and 25 in descriptions, active voice, present tense, plain words with one meaning, no private shorthand. A question offers concrete options to pick from. Pages, persuasive text and text in the user's voice are out of scope.

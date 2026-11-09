@@ -225,6 +225,8 @@ Commits made inside 8b (conflict resolutions, regenerated output) follow step 8'
 
 ## 9. Report
 
+**Write it STE-style.** Questions, proposals, findings, steps and handoffs this skill writes follow the checkable subset of ASD-STE100 (Simplified Technical English): one topic per sentence, at most 20 words per sentence in instructions and 25 in descriptions, active voice, present tense, plain words with one meaning, no private shorthand. A question offers concrete options to pick from. Pages, persuasive text and text in the user's voice are out of scope.
+
 End with two sections:
 
 - **Landed**: one line per meaningful change, the review verdict, the gate results, the commits made or the message draft, the merge (step 7b) when `m` ran, the PR result (step 8b) when `pr` ran: URL and shipped SHA, or "not shipped" with what it waits on, and which Ship settings were assumed, under Needs you.

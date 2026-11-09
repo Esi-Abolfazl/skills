@@ -38,6 +38,8 @@ Apply?    yes / edit / no
 
 Discuss and revise each proposal until the user approves or drops it. Apply only the approved one, through the same reviewer in apply mode (or reviewer.md's apply rules yourself). Never touch rule files, skills or commands on your own initiative, and never treat "yes" to one proposal as "yes" to the others.
 
+**Write it STE-style.** Questions, proposals, findings, steps and handoffs this skill writes follow the checkable subset of ASD-STE100 (Simplified Technical English): one topic per sentence, at most 20 words per sentence in instructions and 25 in descriptions, active voice, present tense, plain words with one meaning, no private shorthand. A question offers concrete options to pick from. Pages, persuasive text and text in the user's voice are out of scope.
+
 ## Common mistakes
 
 | Mistake | Fix |
