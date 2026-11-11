@@ -173,7 +173,7 @@ transcribe the code itself: the executor reads the file at run time.
 
 **Every plan ends with three standing tasks**, after the implementation tasks:
 
-- **Simplify**: the user's simplify or review skill (`/simplify` if present) over the changed code.
+- **Simplify**: one review pass over the changed code for reuse, simplification, efficiency and altitude (root cause, not a patch), then apply the fixes. Up to 200 changed lines: the session does the pass itself. Above that: one read-only reviewer subagent on the strongest model gets all four angles in one brief. Never one agent per angle (a skill such as `/simplify` that launches four pays the start-up context and the diff four times).
 - **Test coverage**: tests for real behavior and failure modes, not for lines.
 - **Docs surface**: every doc the change touches or makes stale, per its doc map, using the `project-documents` skill (the project's own documents skill wins when it has one).
 
@@ -215,13 +215,15 @@ plan itself, not the goal's prestige:
 - **haiku / low to medium**: purely mechanical tasks: renames, config, boilerplate the plan
   fully specifies.
 - **sonnet / medium**: the default: well-specified tasks in a familiar codebase.
-- **sonnet / high**: tricky integration, concurrency, subtle ordering constraints, or a
-  weak test safety net.
-- **opus / high**: high blast radius (migrations, auth, public contracts), tasks that
-  leave real design freedom to the executor, or cross-repo coordination.
+- **opus / medium**: tricky integration, concurrency, subtle ordering constraints, or a
+  weak test safety net; high blast radius (migrations, auth, public contracts), tasks
+  that leave real design freedom to the executor, or cross-repo coordination.
 
 The recommendation binds the human, not the tooling: `/plan-execute` runs on whatever
 model the session has: the human picks it when launching.
+
+Never recommend an effort above medium: a harder plan gets a stronger model, not more
+effort.
 
 **9. ADR check (section 7).**
 An ADR under `docs/adr/` records **an invariant an LLM agent could not infer from the

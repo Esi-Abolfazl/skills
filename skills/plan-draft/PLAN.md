@@ -4,7 +4,7 @@ date: YYYY-MM-DD
 adr: none # none | required | NNNN (set to the committed ADR number once written)
 skills: [] # skills /plan-execute should preload, e.g. [coding-standards, ui-testing]
 execution_model: sonnet # recommended model for /plan-execute: haiku | sonnet | opus
-execution_effort: medium # recommended reasoning effort: low | medium | high
+execution_effort: medium # recommended reasoning effort: low | medium
 handoffs: [] # handoff files this plan generated (sibling side must be planned+executed first; /plan-execute gates on their status)
 from_handoff: # path of the handoff this plan was drafted from, if any
 from_brief: # path of the promoted board brief (BRIEF-<slug>.md) this plan was drafted from, if any
@@ -72,7 +72,8 @@ Files, Change (1 to 2 lines), plus a constraint/ordering note only when load-bea
 
 ### Phase Z: Standing
 
-- [ ] **Z1. Simplify**: the simplify or review skill over the changed code
+- [ ] **Z1. Simplify**: one pass for reuse, simplification, efficiency, altitude; then fix
+  - Up to 200 changed lines: the session itself. Above: one reviewer subagent, all four angles
 - [ ] **Z2. Test coverage**: tests for real behavior and failure modes, not lines
 - [ ] **Z3. Docs surface**: every doc the change touches or makes stale (`project-documents`)
 

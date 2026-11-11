@@ -76,6 +76,10 @@ Work section 3's tasks top-to-bottom. For each task:
 Keep going until every task is `- [x]` or you hit a blocker. After each task show running
 progress `K/N tasks complete`.
 
+**Same failure twice.** When a task's gate fails twice on the same error, make no third
+attempt on your own. Get the root cause first from a read-only reviewer subagent on the
+strongest model. If the cause contradicts the plan, that is divergence (step 5).
+
 **Cross-repo tasks.** First check the workspace's cross-repo policy in the loaded
 context (`AGENTS.md`, `CLAUDE.md` or `.claude/CLAUDE.md`). Under **handoff-only**, a sibling-repo need
 is never edited from here: write the handoff file the task describes (or, on unplanned
