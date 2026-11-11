@@ -43,7 +43,13 @@ npx skills check
 npx skills update
 ```
 
-Claude Code plugins (`skills` and the mods): turn on auto-update once. At a Claude Code prompt in a terminal:
+Claude Code plugins (`skills` and the mods): turn on auto-update once. Paste this into Claude Code, in the desktop app or a terminal, and approve the file edit:
+
+```text
+Turn on auto-update for the plugin marketplace "esi-abolfazl" (GitHub repo Esi-Abolfazl/skills). In my user settings file ~/.claude/settings.json, set "autoUpdate": true on its entry under "extraKnownMarketplaces". Add the entry if it is missing. Change nothing else.
+```
+
+Or by hand, at a Claude Code prompt in a terminal:
 
 1. `/plugin`, then the **Marketplaces** tab.
 2. Select `esi-abolfazl`.
