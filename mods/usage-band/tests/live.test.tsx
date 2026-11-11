@@ -94,7 +94,7 @@ describe('details', () => {
     for (const surface of ['terminal', 'desktop'] as const) {
       const pane = await $.ui.mount({ plugin: 'usage-band', surface, ...PANE } as never)
       const titles = ((await pane.findAll({ type: 'Client' } as never)) as unknown as { props: { props: { title: string } } }[]).map(c => c.props.props.title)
-      expect(titles).toEqual(['Context', 'Limits', 'Tokens', 'Cost', 'Turns', 'Tests'])
+      expect(titles).toEqual(['Context', 'Limits', 'Tokens', 'Cost', 'Models', 'Turns', 'Tests'])
       await pane.unmount()
     }
   })

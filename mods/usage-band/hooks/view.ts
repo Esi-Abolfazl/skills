@@ -2,7 +2,8 @@
 // engine's usage. Pure, so tests can drive it without an engine.
 import type { SessionUsage } from 'claude-code'
 
-import type { RateLimit, Stats } from '../types'
+import type { ModelRow, RateLimit, Stats, Tokens } from '../types'
+import { costOf } from './prices'
 import { WINDOWS, fmtSpan, fmtTokens, level, windowMark } from './pills'
 import type { Alert, Column, Pill } from './pills'
 
@@ -51,6 +52,10 @@ export const cacheRate = (s: Stats) => {
   const all = t.input + t.cacheRead + t.cacheWrite
   return all > 0 ? (t.cacheRead / all) * 100 : undefined
 }
+
+// A reading polled from the account within this long beats the engine's, which only this session's replies move.
+const POLLED_FRESH_MS = 180_000
+export const polledFresh = (s: Stats, now: number) => s.limitsAt !== undefined && now - s.limitsAt < POLLED_FRESH_MS && (s.lastLimits?.length ?? 0) > 0
 
 // A kept reading is good until its window resets; after that its figure means nothing.
 export const keptLimits = (kept: RateLimit[], now: number) => kept.filter(l => l.resetsAt === undefined || Date.parse(l.resetsAt) > now)
@@ -132,8 +137,9 @@ export type View = {
 export function buildView(s: Stats, usage: SessionUsage, now: number): View {
   const { scan, scanError, turnCosts } = s
   // No reading yet this session: the last one kept, minus any window that has since reset.
-  const stale = usage.rateLimits.length === 0 && (s.lastLimits?.length ?? 0) > 0
-  const live: SessionUsage = stale ? { ...usage, rateLimits: keptLimits(s.lastLimits!, now) as SessionUsage['rateLimits'] } : usage
+  const polled = polledFresh(s, now)
+  const stale = !polled && usage.rateLimits.length === 0 && (s.lastLimits?.length ?? 0) > 0
+  const live: SessionUsage = polled || stale ? { ...usage, rateLimits: keptLimits(s.lastLimits!, now) as SessionUsage['rateLimits'] } : usage
   const limits = [readLimit(live, 'five_hour', now), readLimit(live, 'seven_day', now)].map(l =>
     l && stale ? { ...l, stale: true, fullIn: undefined, alert: level(l.pct) } : l,
   )
@@ -218,3 +224,24 @@ export const layouts = (v: View): Column[][][] => [
   ...([2, 1, 0] as const).map(d => [[...v.meters(d), ...v.session(d)]]),
   ...([2, 1, 0] as const).map(d => [v.meters(d), v.session(d)]),
 ]
+
+export type ModelLine = Tokens & { model: string; tokens: number; sessions: number; usd?: number; share: number }
+export type Models = { lines: ModelLine[]; sessions: number; tokens: number; usd?: number; unpriced: number; byCost: boolean }
+
+// The card's figures for one period and source. Share is of the estimated cost when every model is priced, else
+// of tokens (byCost false). A model with no price has no usd and is counted in unpriced; the total sums the priced ones.
+export function buildModels(rows: ModelRow[] | undefined, period: ModelRow['period'], source: ModelRow['source']): Models | undefined {
+  if (rows === undefined) return undefined
+  const mine = rows.filter(r => r.period === period && r.source === source)
+  const all = mine.find(r => r.model === '*')
+  const lines = mine
+    .filter(r => r.model !== '*')
+    .map(r => ({ ...r, tokens: r.input + r.output + r.cacheRead + r.cacheWrite, usd: costOf(r.model, r), share: 0 }))
+  const unpriced = lines.filter(l => l.usd === undefined).length
+  const usd = lines.length > unpriced ? lines.reduce((n, l) => n + (l.usd ?? 0), 0) : undefined
+  const tokens = lines.reduce((n, l) => n + l.tokens, 0)
+  const byCost = unpriced === 0 && usd !== undefined && usd > 0
+  for (const l of lines) l.share = byCost ? ((l.usd ?? 0) / usd!) * 100 : tokens > 0 ? (l.tokens / tokens) * 100 : 0
+  lines.sort((a, b) => (byCost ? (b.usd ?? 0) - (a.usd ?? 0) : b.tokens - a.tokens))
+  return { lines, sessions: all?.sessions ?? 0, tokens, usd, unpriced, byCost }
+}

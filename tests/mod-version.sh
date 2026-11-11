@@ -14,6 +14,10 @@ check() {
   case $base in ''|*[!0]*) ;; *) base=HEAD~1 ;; esac
   for dir in "$ROOT"/mods/*/; do
     mod=$(basename "$dir")
+    # A mod that shows its version keeps it in hooks/version.ts; it must match the manifest.
+    if [ -f "$dir/hooks/version.ts" ] && [ "$(version_of < "$dir/.claude-plugin/plugin.json")" != "$(sed -n "s/.*VERSION = '\([^']*\)'.*/\1/p" "$dir/hooks/version.ts")" ]; then
+      echo "FAIL $mod: hooks/version.ts differs from plugin.json"; fail=1
+    fi
     [ -n "$(git -C "$ROOT" diff --name-only "$base" HEAD -- "mods/$mod" ":!mods/$mod/tests" ":!mods/$mod/bench")" ] || continue
     old=$(git -C "$ROOT" show "$base:mods/$mod/.claude-plugin/plugin.json" 2>/dev/null | version_of)
     [ -n "$old" ] || continue # a new mod has no earlier version to keep

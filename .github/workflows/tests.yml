@@ -31,3 +31,4 @@ jobs:
         with:
           node-version: 24
       - run: node --experimental-strip-types mods/usage-band/bench/turns.mjs
+      - run: node --experimental-strip-types mods/usage-band/bench/models.mjs

@@ -6,7 +6,10 @@ import { bandSvg, bandText, bandWidth, fmtSpan, fmtTokens, meterColor, slotPx } 
 import { NO_SCAN, SCAN_AWK, SCAN_SH, parseScan } from './scan'
 import { isCode, isTestCommand, testOutcome } from './testrun'
 import { ACCENT } from './cells'
-import { buildView, layouts } from './view'
+import { VERSION } from './version'
+import { MODELS_AWK, MODELS_QUERY_AWK, MODELS_SESSION_AWK, MODELS_SH, PERIODS, SOURCES, parseQuery, windowStarts } from './models'
+import { costOf, stale as pricesStale } from './prices'
+import { buildModels, buildView, layouts, polledFresh } from './view'
 
 type ClientEl = (p: { key: string; module: string; props: unknown; width: string; height?: string }) => never
 type SvgEl = (p: { source: string; width: number; height: number; alt: string }) => never
@@ -69,6 +72,109 @@ async function keepLimits($: EngineInterface, limits: RateLimit[]) {
   await update($, stats, s => ({ ...EMPTY, ...s, lastLimits: JSON.parse(json) }))
 }
 
+// The engine's reading comes only from this session's own replies, so other sessions and claude.ai never move it.
+// The account's usage endpoint (what /usage shows) is polled instead. The credential stays in the engine: the
+// handle from authorize() is spent by $.http.fetch.
+// shortcut: the endpoint is undocumented; a changed shape or a failure keeps the engine's reading, and a failure
+// is not retried for BACKOFF_MS. Replace it when the engine exposes the account's limits itself.
+const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage'
+const POLL_MS = 60_000
+const BACKOFF_MS = 300_000
+let backoffUntil = 0
+let polling = false
+export function parseUsage(text: string): RateLimit[] {
+  let body: Record<string, { utilization?: unknown; resets_at?: unknown } | null | undefined>
+  try {
+    body = JSON.parse(text)
+  } catch {
+    return []
+  }
+  return (['five_hour', 'seven_day'] as const).flatMap(kind => {
+    const w = body?.[kind]
+    if (typeof w?.utilization !== 'number') return []
+    return [{ kind, percentUsed: Math.round(w.utilization * 10) / 10, resetsAt: typeof w.resets_at === 'string' ? w.resets_at : undefined }]
+  })
+}
+async function pollLimits($: EngineInterface) {
+  const now = await $.clock.now()
+  if (polling || now < backoffUntil) return
+  // Fast turns would fetch once each; the timer's period is the freshness that matters.
+  const at = (await load($)).limitsAt
+  if (at !== undefined && now - at < POLL_MS / 2) return
+  polling = true
+  try {
+    const auth = (await $.session.authorize())?.handle
+    if (auth === undefined) return
+    const r = await $.http.fetch(USAGE_URL, { auth, headers: { 'anthropic-beta': 'oauth-2025-04-20' } })
+    const limits = r.ok ? parseUsage(r.text) : []
+    if (limits.length === 0) {
+      backoffUntil = now + BACKOFF_MS
+      return
+    }
+    await keepLimits($, limits)
+    await update($, stats, s => ({ ...EMPTY, ...s, limitsAt: now }))
+  } catch {
+    backoffUntil = now + BACKOFF_MS
+  } finally {
+    polling = false
+  }
+}
+
+// Per-model usage across all sessions (hooks/models.ts). Runs from timers, never from a hook that holds a dispatch:
+// a dispatch's end cuts off work it left running. Each run reads about SCAN_BYTES and takes under a minute;
+// while files are left the next run follows at once, so a first scan is several short runs.
+const SCAN_BYTES = 1_000_000_000
+const SCAN_RUNS = 40
+const SCAN_MS = 300_000
+let scanning = false
+let parityWanted = false
+let lastQuery = ''
+async function scanModels($: EngineInterface, parity = false) {
+  if (scanning) {
+    parityWanted ||= parity
+    return
+  }
+  scanning = true
+  parityWanted ||= parity
+  try {
+    const base = await configDir($)
+    const dir = `${base}/usage-band/models`
+    for (let run = 0; run < SCAN_RUNS; run++) {
+      const r = await $.process.run(['/bin/sh', '-c', MODELS_SH, 'sh', `${base}/projects`, dir, MODELS_AWK, String(SCAN_BYTES)], { timeoutMs: 120_000 })
+      // 3: another session holds the lock; its ledger is read below all the same.
+      if (r.exitCode !== 0 && r.exitCode !== 3) throw new Error(`models scan exited ${r.exitCode}: ${r.stderr.slice(0, 120)}`)
+      const now = await $.clock.now()
+      const { D, W, M } = windowStarts(now)
+      const q = await $.process.run(['awk', '-v', `D=${D}`, '-v', `W=${W}`, '-v', `M=${M}`, MODELS_QUERY_AWK, `${dir}/ledger`])
+      if (q.exitCode !== 0) throw new Error(`models query exited ${q.exitCode}`)
+      const more = r.exitCode === 0 && r.stdout.includes('more')
+      const check = parityWanted && !more ? await sessionParity($, dir) : undefined
+      if (check !== undefined) parityWanted = false
+      // An idle run that finds the same figures redraws nothing.
+      const key = `${q.stdout}|${more}`
+      if (key !== lastQuery || check !== undefined) await update($, stats, s => ({ ...EMPTY, ...s, models: parseQuery(q.stdout), modelsMore: more, modelsError: undefined, ...(check !== undefined ? { parity: check } : {}) }))
+      lastQuery = key
+      if (!more) break
+    }
+  } catch (err) {
+    await update($, stats, s => ({ ...EMPTY, ...s, modelsError: String(err).slice(0, 160) }))
+  } finally {
+    scanning = false
+  }
+}
+// This session's priced ledger rows against the engine's own cost: a gap means the price table is stale (or a model is unpriced).
+async function sessionParity($: EngineInterface, dir: string) {
+  const engine = (await $.session.usage().catch(() => undefined))?.cost?.usd
+  if (engine === undefined) return undefined
+  const q = await $.process.run(['awk', '-v', `SID=${await $.session.id()}`, MODELS_SESSION_AWK, `${dir}/ledger`])
+  if (q.exitCode !== 0) return undefined
+  const rows = parseQuery(q.stdout)
+  const price = (source: 'main' | 'all') => rows.filter(r => r.source === source).reduce((n, r) => n + (costOf(r.model, r) ?? 0), 0)
+  const [main, all] = [price('main'), price('all')]
+  // Stale only when neither reading matches: the engine's cost may or may not include subagents.
+  return { est: all, engine, stale: pricesStale(main, engine) && pricesStale(all, engine) }
+}
+
 const fail = ($: EngineInterface, scanError: string) => update($, stats, s => ({ ...EMPTY, ...s, scanError }))
 
 async function rescan($: EngineInterface) {
@@ -105,6 +211,7 @@ const clock = (ms: number) => {
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     // First, so a failure below never stops it. A Client that fails again is dropped again.
+    $.clock.every(POLL_MS, () => pollLimits($))
     $.clock.every(RETRY_MS, () => {
       if (down.size === 0) return
       down.clear()
@@ -117,6 +224,9 @@ export const register: Register = on => {
     await update($, stats, s => ({ ...EMPTY, ...s, costBase: usd ?? s.costBase, lastLimits: kept ?? s.lastLimits }))
     // Scan state of sessions untouched for two weeks is only a cache: a resumed one rescans in full.
     await $.process.run(['find', `${await configDir($)}/usage-band`, '-name', '*.state*', '-mtime', '+14', '-delete']).catch(() => undefined)
+    $.clock.every(SCAN_MS, () => void scanModels($))
+    $.clock.after(1, () => void scanModels($))
+    $.clock.after(1, () => void pollLimits($))
     await refresh($)
     return next(e)
   }).catch(($, e, next) => next(e))
@@ -158,7 +268,9 @@ export const register: Register = on => {
     const done = await next(e)
     if (e.agentId !== undefined) return done
     const usage = await $.session.usage().catch(() => undefined)
-    if (usage && usage.rateLimits.length > 0) await keepLimits($, usage.rateLimits).catch(() => undefined)
+    // The polled figure is the account's; the reply's only fills in when polling is down. A fetch has no timeout, so it runs from a timer.
+    $.clock.after(1, () => void pollLimits($))
+    if (usage && usage.rateLimits.length > 0 && !polledFresh(await load($), await $.clock.now())) await keepLimits($, usage.rateLimits).catch(() => undefined)
     const usd = usage?.cost?.usd
     if (usd !== undefined) {
       await update($, stats, x => {
@@ -170,6 +282,8 @@ export const register: Register = on => {
         return { ...s, costBase: usd, turnCosts: isTurn ? [...s.turnCosts, turn].slice(-10) : s.turnCosts }
       })
     }
+    // The scan runs on a timer: this hook's dispatch would cut it off. Its parity check needs a ledger that has this turn.
+    $.clock.after(1, () => void scanModels($, true))
     await refresh($)
     return done
   }).catch(($, e, next) => next(e))
@@ -179,6 +293,12 @@ export const register: Register = on => {
     const toggle = (e.data as { toggle?: unknown } | null)?.toggle
     if (typeof toggle === 'string') {
       await toggleSection($, toggle)
+      return {}
+    }
+    const pick = (e.data as { pick?: { row?: unknown; id?: unknown } } | null)?.pick
+    if (pick && typeof pick.id === 'string' && (pick.row === 'period' || pick.row === 'source')) {
+      const row = pick.row, id = pick.id
+      if ((row === 'period' ? PERIODS : SOURCES).includes(id as never)) await update($, stats, s => ({ ...EMPTY, ...s, [row]: id }))
       return {}
     }
     const open = (e.data as { open?: unknown } | null)?.open
@@ -356,13 +476,52 @@ export const register: Register = on => {
     const t = s.scan.tokens
     const log = s.scan.log.slice(-10)
     // turnCosts covers only turns since the band loaded: they line up with the newest turns.
-    const costOf = (i: number) => s.turnCosts[s.turnCosts.length - (log.length - i)]
+    const turnCost = (i: number) => s.turnCosts[s.turnCosts.length - (log.length - i)]
     const limits = v.limits.filter((l): l is NonNullable<typeof l> => l !== undefined)
+    const period = s.period ?? 'week'
+    const source = s.source ?? 'all'
+    const m = buildModels(s.models, period, source)
+    const PERIOD_LABEL = { day: 'Day', week: 'Week', month: 'Month', all: 'All' } as const
+    const SOURCE_LABEL = { all: 'Everything', main: 'Main', sub: 'Subagents' } as const
+    const tabRow = <K extends string>(row: 'period' | 'source', ids: readonly K[], label: Record<K, string>, active: K) => (
+      <Box key={row} flexDirection="row" gap={Client ? 0 : 1} marginTop={1} width="100%">
+        {ids.map(id =>
+          Client ? (
+            // A segmented control: equal shares of the card width; a width in characters wraps in a proportional font.
+            <Client key={`${row}-${id}`} module="./tab.client.tsx" props={{ row, id, label: label[id], active: id === active }} width={`${Math.floor(100 / ids.length)}%`} />
+          ) : (
+            <Button key={id} plain onPress={() => void update($, stats, x => ({ ...EMPTY, ...x, [row]: id }))}>
+              <Text bold={id === active} underline={id === active} dimColor={id !== active}>{id === active ? `[${label[id]}]` : label[id]}</Text>
+            </Button>
+          ),
+        )}
+      </Box>
+    )
+    const usdText = (n: number | undefined) => (n === undefined ? 'n/a' : `$${n.toFixed(2)}`)
+    const modelsBody: RenderChildren[] = [
+      tabRow('period', PERIODS, PERIOD_LABEL, period),
+      tabRow('source', SOURCES, SOURCE_LABEL, source),
+      ...(s.modelsError ? [note('err', `Could not read the sessions: ${s.modelsError}`, true)] : []),
+      ...(m === undefined
+        ? [note('wait', 'Reading your sessions…')]
+        : m.lines.length === 0
+          ? [note('empty', 'No usage in this period.')]
+          : [
+              headline('h', m.usd !== undefined ? `${usdText(m.usd)} estimate` : `${fmtTokens(m.tokens)} tokens`, `${m.sessions} ${m.sessions === 1 ? 'session' : 'sessions'}`),
+              bar('mb', m.lines.map((l, i) => ({ n: m.byCost ? (l.usd ?? 0) : l.tokens, color: color(i) })), m.byCost ? (m.usd ?? 0) : m.tokens),
+              ...m.lines.map((l, i) => item(l.model, join(fmtTokens(l.tokens), usdText(l.usd)), pct(l.share), { dot: color(i) })),
+              note('basis', [m.byCost ? 'Share of estimated cost.' : 'Share of tokens.', 'Tokens include cache reads.', 'Estimated at API prices, not what a subscription pays.']),
+              ...(m.unpriced > 0 ? [note('unpriced', `${m.unpriced} ${m.unpriced === 1 ? 'model has' : 'models have'} no price yet: counted in tokens only.`, true)] : []),
+            ]),
+      ...(s.modelsMore ? [note('more', 'Still reading older sessions: the figures grow.')] : []),
+      ...(s.parity?.stale ? [note('parity', `Prices may be stale: this session's tokens price at ${usdText(s.parity.est)}, the engine says ${usdText(s.parity.engine)}.`, true)] : []),
+    ]
     const verdict = s.tests && (s.tests.state === 'pass' ? 'Passed' : s.tests.state === 'fail' ? 'Failed' : 'Stale')
     const counts = s.tests && join(s.tests.passed !== undefined && `${s.tests.passed} passed`, s.tests.failed !== undefined && `${s.tests.failed} failed`)
 
     return (
-      <Box flexDirection="column">
+      // At least the pane's height, so the spacer pins the version line to its bottom edge.
+      <Box flexDirection="column" minHeight={e.props.scroll?.bodyRows}>
         {s.scanError && <Text color="warning">Could not read the transcript: {s.scanError}</Text>}
         {card('context', 'Context', `${Math.round(c.pct)}% · ${fmtTokens(c.used)} / ${fmtTokens(c.max)}`, [
           headline('h', `${Math.round(c.pct)}% used`, `${fmtTokens(c.used)} / ${fmtTokens(c.max)}`),
@@ -405,6 +564,7 @@ export const register: Register = on => {
           ...(v.avg !== undefined ? [item('Average a turn', `$${v.avg.toFixed(2)}`)] : []),
           ...(v.last !== undefined ? [item('Last turn', `$${v.last.toFixed(2)}`)] : []),
         ])}
+        {card('models', 'Models', m === undefined ? 'reading…' : join(PERIOD_LABEL[period], m.usd !== undefined ? usdText(m.usd) : `${fmtTokens(m.tokens)}`), modelsBody)}
         {card(
           'turns',
           'Turns',
@@ -415,7 +575,7 @@ export const register: Register = on => {
               ? [note('none', 'No turns yet.')]
               : log
                   .map((turn, i) => {
-                    const cost = costOf(i)
+                    const cost = turnCost(i)
                     return item(`${clock(turn.startAt)}  ${fmtSpan(turn.ms)}`, `ctx ${fmtTokens(turn.ctx)}`, cost !== undefined ? `$${cost.toFixed(2)}` : '')
                   })
                   .reverse()),
@@ -429,6 +589,8 @@ export const register: Register = on => {
             ? [note('none', 'No test run seen yet.')]
             : [headline('h', verdict!, counts ?? ''), ...(s.tests.state === 'stale' ? [note('n', 'Code changed since the last run.')] : [])],
         )}
+        <Box flexGrow={1} />
+        <Text dimColor>usage-band v{VERSION}</Text>
       </Box>
     )
   }).catch(($, e, next) => next(e))
