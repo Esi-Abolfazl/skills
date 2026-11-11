@@ -34,6 +34,31 @@ claude plugin install skills --marketplace Esi-Abolfazl/skills
 
 At a Claude Code prompt in a terminal: `/plugin install skills --marketplace Esi-Abolfazl/skills`.
 
+### Updates
+
+Skills CLI: list updates, then install them.
+
+```bash
+npx skills check
+npx skills update
+```
+
+Claude Code plugins (`skills` and the mods): turn on auto-update once. At a Claude Code prompt in a terminal:
+
+1. `/plugin`, then the **Marketplaces** tab.
+2. Select `esi-abolfazl`.
+3. **Enable auto-update**.
+
+Claude Code then updates the installed plugins a few minutes after a session starts. The new version loads on the next launch, or at once with `/reload-plugins`. Auto-update is off by default for every marketplace that is not Anthropic's.
+
+Update one plugin now:
+
+```bash
+claude plugin update skills@esi-abolfazl
+```
+
+The `skills` plugin has no version field, so every commit here is an update. Each mod updates when its version changes.
+
 ## Skills
 
 | Skill | What it does |

@@ -1,6 +1,5 @@
 {
   "name": "skills",
-  "version": "0.1.0",
   "description": "Esi-Abolfazl's agent skills: PR and work-item pages, session wrap-up and retro, product manager, QA engineer, project documents (one home per fact, Definition of Done), maintenance routines, plan draft/review/execute, handoff queue, logo design, text humanizing, YouTube review, purchase research, Iranian store reader",
   "author": { "name": "Esi-Abolfazl" },
   "repository": "https://github.com/Esi-Abolfazl/skills",
