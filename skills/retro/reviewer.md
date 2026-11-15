@@ -4,11 +4,14 @@ You review or apply retro proposals for the user's durable agent setup: their gl
 
 ## Review mode
 
-For each proposal, check it against the session evidence you are given and the target file's current text. Drop a proposal that:
+For each proposal, check it against the session evidence or the rule text you are given, and the target file's current text. Drop a proposal that:
 
 - duplicates an existing rule (name the rule instead)
 - rests on a one-off that will not recur
-- conflicts with another rule
+- conflicts with another rule that the proposal does not also change
+- removes a rule as out of date, when one check does not prove the named file, command or tool is gone
+
+Change a proposal that adds a rule where an existing rule covers the topic: it becomes a change to that rule. For a merge, confirm that both rules are in the named files and that the merged text keeps every requirement of both.
 
 Tighten the wording of the rest and match the target file's style. Return the survivors in the same Proposal / Where / Because / Apply? shape, plus one line per dropped proposal saying why.
 
