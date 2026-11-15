@@ -48,7 +48,7 @@ Apply?    yes / edit / no
 
 ## 4. Apply only what is approved
 
-Discuss and revise each proposal until the user approves or drops it. Apply only the approved one, through the same reviewer in apply mode (or reviewer.md's apply rules yourself). Never touch rule files, skills or commands on your own initiative, and never treat "yes" to one proposal as "yes" to the others.
+Discuss and revise each proposal until the user approves or drops it. Apply only the approved one, through the same reviewer in apply mode (or reviewer.md's apply rules yourself). Never touch rule files, skills or commands on your own initiative, and never treat "yes" to one proposal as "yes" to the others. An "edit" or other free-text answer is not a final answer: revise the proposal with the user's words, show the revised box, and ask yes or no again.
 
 **Write it STE-style.** Questions, proposals, findings, steps and handoffs this skill writes follow the checkable subset of ASD-STE100 (Simplified Technical English): one topic per sentence, at most 20 words per sentence in instructions and 25 in descriptions, active voice, present tense, plain words with one meaning, no private shorthand. A question offers concrete options to pick from. Pages, persuasive text and text in the user's voice are out of scope.
 
@@ -61,3 +61,4 @@ Discuss and revise each proposal until the user approves or drops it. Apply only
 | A proposal that restates an existing rule | The reviewer drops it; point at the existing rule if it was ignored |
 | Adding a rule beside one that covers the same topic | Change the existing rule |
 | Applying on a vague "sounds good" | Ask which proposal, then apply that one |
+| Treating an edit answer as done | Revise the box and ask again |
