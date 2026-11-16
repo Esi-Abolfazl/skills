@@ -39,7 +39,7 @@ When the text asks someone to decide (open product questions, choices with a def
 1. An opening of three lines at most: what the questions are for, that our proposal sits under each one, and that the reader replies only with the numbers they disagree with. Anything the reader must send either way comes next, in up to four short lines: what it is, where it was asked for, what it is used for, and what stands in until it arrives.
 2. Each decision is exactly two lines, then a blank line:
    - the numbered question, ending in a question mark;
-   - the proposal label (`Our proposal:`, or the voice profile's label for the language), then the answer first (yes, no, or the choice), then at most one sentence: the reason for it or its main cost.
+   - the proposal label (`Our proposal:`, or the voice profile's label for the language), then the answer first (yes, no, or the choice), then at most one sentence: the reason or its main cost. The reason names its source: the reader's own words, quoted, or `our guess` when no message from them asks for it.
 3. One decision per number, and only decisions the reader has to make.
 
 ```
