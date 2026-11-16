@@ -1,6 +1,6 @@
 ---
 name: retro
-description: "Use when the session wraps up (the user confirms the task is done, says thanks or bye) or the user asks for a retro, retrospective or \"what should we change\" about how the agent worked this session. Not for reviewing the code or product built this session (that is a code review), or for applying a change the user hasn't approved."
+description: "Use when the user asks for a retro, retrospective or \"what should we change\" about how the agent worked this session. Not for reviewing the code or product built this session (that is a code review), or for applying a change the user hasn't approved."
 ---
 
 # Retro
