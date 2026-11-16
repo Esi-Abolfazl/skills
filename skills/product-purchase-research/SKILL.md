@@ -10,6 +10,12 @@ the constraints → write the coverage checklist → apply dealbreakers as
 filters → shortlist until saturated → check every market → compute
 landed USD → recommend.
 
+This order is the whole run, every time. Never cut it to a quick pass,
+one store or one market, and never skip the technical reviews (section
+3). A terse or minimal mode does not shorten it. A partial run happens
+only when the user asks for one, and its report names each step it
+skipped.
+
 ## 0. The user's buying profile
 
 The user's region, markets, stores and dealbreakers live in one file on
@@ -97,7 +103,12 @@ spent; the report says which. The open rows are the unchecked list a
 request for more searches carries.
 
 - One row per hard constraint, in the user's own words, not
-  paraphrased: a paraphrase can drop the condition that matters.
+  paraphrased: a paraphrase can drop the condition that matters. A
+  want the user words softly ("desired", "would be nice", "ideally")
+  is a preference, not a constraint. It gets no row and removes no
+  candidate. It only ranks candidates that pass every constraint and
+  dealbreaker, and the report says which candidates meet it. When a
+  want can be either kind, ask once before the shortlist.
 - One row per dealbreaker, closed when every shortlisted candidate
   has been checked against it.
 - "Shortlist saturated", closed by the saturation check (section 3).
