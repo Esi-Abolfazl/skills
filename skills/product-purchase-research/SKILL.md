@@ -94,6 +94,11 @@ A field reading `(not set)` is asked on the next run.
   only when the user buys and receives it for them; otherwise ask
   where that person buys and receives. Nothing about them goes into
   the profile.
+- **Accessories for a main product** (a cable, charger, case, mount):
+  first check what the main product ships with. Use the maker's page or
+  manual for the exact model and regional version. Say whether the box
+  item already does the job. Propose a separate purchase only for a
+  gap, and name the gap (a rating, a length, a missing part).
 
 ### Coverage checklist
 
