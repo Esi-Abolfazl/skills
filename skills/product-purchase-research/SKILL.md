@@ -10,11 +10,13 @@ the constraints → write the coverage checklist → apply dealbreakers as
 filters → shortlist until saturated → check every market → compute
 landed USD → recommend.
 
-This order is the whole run, every time. Never cut it to a quick pass,
-one store or one market, and never skip the technical reviews (section
-3). A terse or minimal mode does not shorten it. A partial run happens
-only when the user asks for one, and its report names each step it
-skipped.
+This order is the whole run, every time, and a follow-up buying
+question in the same chat ("what about X?") starts a new one. Never cut
+it to a quick pass, one store or one market, and never skip the
+technical reviews (section 3). A terse or minimal mode does not shorten
+it. A partial run happens only when the user asks for one, and its
+report names each step it skipped. Never stop at a quick check and
+offer the full run as a choice: run it.
 
 ## 0. The user's buying profile
 
