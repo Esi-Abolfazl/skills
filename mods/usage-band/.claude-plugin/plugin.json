@@ -1,6 +1,6 @@
 {
   "name": "usage-band",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Pill band above the prompt: 5h/7d limits, tokens, context, compactions, agent time, cost, tests",
   "types": "./types/index.d.ts",
   "author": {
@@ -29,7 +29,7 @@
     "accountLabelWhenWrapped": {
       "type": "string",
       "title": "Label when wrapped",
-      "description": "Show the label when the band is not on its widest layout (it wraps to more rows)",
+      "description": "Show the label when it would push the band to its 4-row layout",
       "options": [
         "hide",
         "show"

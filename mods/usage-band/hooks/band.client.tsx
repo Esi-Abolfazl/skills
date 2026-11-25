@@ -27,7 +27,7 @@ export default function Band(props: Props, surface: ClientSurface<State>) {
   // Cells the strip takes (a 1-cell Box on the terminal, an Svg STRIP_PX wide elsewhere) and the tint's padding.
   const stripW = Svg ? Math.ceil(STRIP_PX / CELL_W) : 1
   const roomFor = (strip: boolean) => surface.columns - (account ? 2 + (strip ? stripW : 0) : 0)
-  const picked = pickWithLabel(look, props.layouts, (g, strip) => gridsCells(g) <= roomFor(strip))
+  const picked = pickWithLabel(look, props.layouts, (g, strip) => gridsCells(g) <= roomFor(strip), g => g.length)
   const side = picked.strip && look.labelSide !== 'off' ? look.labelSide : undefined
   const stripCols = side ? stripW : 0
   const lead = account ? 1 + (side === 'left' ? stripCols : 0) : 0

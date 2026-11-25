@@ -44,17 +44,18 @@ describe('parseTints', () => {
   test('label shows only on the widest layout unless wrapped is show', () => {
     const fits = (max: number) => (g: number, strip: boolean) => g + (strip ? 1 : 0) <= max
     const all = [10, 8, 6]
+    const rows = (g: number) => (g >= 8 ? 2 : 4) // 10 and 8 are one-line layouts, 6 wraps to 4 rows
     const l = lookOf(ID, { accountTints: TINTS, accountLabel: 'left' })
-    expect(pickWithLabel(l, all, fits(11))).toEqual({ grid: 10, strip: true })
-    expect(pickWithLabel(l, all, fits(10))).toEqual({ grid: 10, strip: false }) // strip pushes to layout 1: drop it, re-pick full room
-    expect(pickWithLabel(l, all, fits(8))).toEqual({ grid: 8, strip: false })
+    expect(pickWithLabel(l, all, fits(11), rows)).toEqual({ grid: 10, strip: true })
+    expect(pickWithLabel(l, all, fits(10), rows)).toEqual({ grid: 8, strip: true }) // a narrower one-line layout keeps the label
+    expect(pickWithLabel(l, all, fits(8), rows)).toEqual({ grid: 8, strip: false }) // the strip would force 4 rows: drop it
     const show = lookOf(ID, { accountTints: TINTS, accountLabel: 'left', accountLabelWhenWrapped: 'show' })
-    expect(pickWithLabel(show, all, fits(10))).toEqual({ grid: 8, strip: true })
-    expect(pickWithLabel(lookOf(ID, { accountTints: TINTS }), all, fits(99)).strip).toBe(false)
+    expect(pickWithLabel(show, all, fits(8), rows)).toEqual({ grid: 6, strip: true })
+    expect(pickWithLabel(lookOf(ID, { accountTints: TINTS }), all, fits(99), rows).strip).toBe(false)
   })
   test('the old min-columns option is ignored', () => {
     const l = lookOf(ID, { accountTints: TINTS, accountLabel: 'left', accountLabelMinColumns: '999' } as never)
-    expect(pickWithLabel(l, [1], () => true).strip).toBe(true)
+    expect(pickWithLabel(l, [1], () => true, () => 1).strip).toBe(true)
   })
 })
 

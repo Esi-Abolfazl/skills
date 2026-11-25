@@ -26,14 +26,15 @@ export function lookOf(id: string | undefined, o: { accountTints?: unknown; acco
 
 // One rule for both surfaces: the strip shows only on the widest layout (index 0), unless whenWrapped.
 // `fits(grid, strip)` says whether a layout fits with or without the strip's room; `all` is roomiest first.
-export function pickWithLabel<G>(l: Look, all: G[], fits: (g: G, strip: boolean) => boolean): { grid: G; strip: boolean } {
+// The label stays while the band keeps the row count of its widest layout; `rows` counts a layout's rows.
+export function pickWithLabel<G>(l: Look, all: G[], fits: (g: G, strip: boolean) => boolean, rows: (g: G) => number): { grid: G; strip: boolean } {
   const pick = (strip: boolean) => {
     const i = all.findIndex(g => fits(g, strip))
     return i < 0 ? all.length - 1 : i
   }
   if (l.account !== undefined && l.labelSide !== 'off') {
     const i = pick(true)
-    if (i === 0 || l.whenWrapped) return { grid: all[i]!, strip: true }
+    if (rows(all[i]!) === rows(all[0]!) || l.whenWrapped) return { grid: all[i]!, strip: true }
   }
   return { grid: all[pick(false)]!, strip: false }
 }

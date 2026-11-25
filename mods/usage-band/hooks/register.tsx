@@ -344,7 +344,7 @@ export const register: Register = (on, options) => {
     if ('Svg' in table) {
       const { Svg } = table as unknown as { Svg: SvgEl }
       const fitAt = (strip: boolean) => (look.account ? room(e.props.bodyColumns, strip) : slotPx(e.props.bodyColumns))
-      const { grid: grids, strip } = pickWithLabel(look, layouts(v), (g, st) => bandWidth(...g) <= fitAt(st))
+      const { grid: grids, strip } = pickWithLabel(look, layouts(v), (g, st) => bandWidth(...g) <= fitAt(st), g => g.length)
       const slot = fitAt(strip)
       // The wash panel is drawn inside the SVG, so its rounded corners and the strip clip exactly.
       const side = strip ? look.labelSide : 'off'

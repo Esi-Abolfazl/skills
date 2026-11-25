@@ -125,7 +125,7 @@ Claude Code plugins that change Claude's own interface. This repo is their marke
 
 - `accountTints`: comma-separated `accountId=LABEL:#wash[:#solid]` entries. The band gets a rounded panel washed with #wash at 14% into the panel color. The wash is mixed for the dark theme: in the light theme the band shows a dark panel. The label strip uses #solid when given, else #wash. Default empty (no tint).
 - `accountLabel`: `off` (default), `left` or `right`. Draws the label as a colored edge strip.
-- `accountLabelWhenWrapped`: `hide` (default) or `show`. The label shows on the band's widest layout. With `hide`, a band that wraps to more rows drops the label and uses the full width; `show` keeps it.
+- `accountLabelWhenWrapped`: `hide` (default) or `show`. With `hide`, the label shows while the band fits in 2 rows; when the label would push the band to 4 rows, it drops and the band uses the full width. `show` keeps it.
 
 Examples: `00000000-0000-0000-0000-000000000000=WORK:#3b82f6` (strip in the wash color) and `00000000-0000-0000-0000-000000000000=WORK:#3b82f6:#2563eb` (strip in a separate solid color). The account id is `CLAUDE_CODE_ACCOUNT_UUID`, which the desktop app sets per session. An account with no entry gets the plain band. The label needs the desktop or mobile app for vertical text; the terminal shows a plain colored edge.
 
