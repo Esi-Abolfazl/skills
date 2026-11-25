@@ -4,13 +4,13 @@ import type { SessionUsage } from 'claude-code'
 
 import type { ModelRow, RateLimit, Stats, Tokens } from '../types'
 import { costOf } from './prices'
-import { WINDOWS, fmtSpan, fmtTokens, level, windowMark } from './pills'
+import { fmtSpan, fmtTokens, level, windowMark, windowSpan } from './pills'
 import type { Alert, Column, Pill } from './pills'
 
 export type Detail = 0 | 1 | 2
 
 // stale: a reading kept from before this session's first reply; its pace is not projected.
-export type Limit = { kind: string; pct: number; left?: number; mark?: number; fullIn?: number; alert?: Alert; stale?: boolean }
+export type Limit = { kind: string; label?: string; pct: number; left?: number; mark?: number; fullIn?: number; alert?: Alert; stale?: boolean }
 
 const worse = (a?: Alert, b?: Alert): Alert | undefined => (a === 'hot' || b === 'hot' ? 'hot' : a ?? b)
 
@@ -20,14 +20,15 @@ export function readLimit(usage: SessionUsage, kind: string, now: number): Limit
   if (l === undefined) return undefined
   const left = l.resetsAt ? Date.parse(l.resetsAt) - now : undefined
   const mark = windowMark(kind, l.resetsAt, now)
-  const span = WINDOWS[kind]
+  const span = windowSpan(kind)
   let fullIn: number | undefined
   if (mark !== undefined && span !== undefined && left !== undefined && mark > 0 && l.percentUsed > 0 && l.percentUsed < 100) {
     const msPerPct = (span * (mark / 100)) / l.percentUsed
     const ms = (100 - l.percentUsed) * msPerPct
     if (ms < left) fullIn = Math.round(ms)
   }
-  return { kind, pct: l.percentUsed, left, mark, fullIn, alert: worse(level(l.percentUsed), fullIn !== undefined ? 'warn' : undefined) }
+  const label = (l as RateLimit).label
+  return { kind, ...(label ? { label } : {}), pct: l.percentUsed, left, mark, fullIn, alert: worse(level(l.percentUsed), fullIn !== undefined ? 'warn' : undefined) }
 }
 
 export type Context = { used: number; max: number; pct: number; compactAt?: number; compactPct?: number; turnsLeft?: number; growth?: number; alert?: Alert }
@@ -70,13 +71,13 @@ function limitPill(l: Limit | undefined, detail: Detail): Pill | undefined {
     alert: l.alert,
     title:
       (l.stale ? 'Last seen, before this session\'s first reply. ' : '') +
-      `${is5h ? '5-hour' : '7-day'} limit: ${pct}% used` +
+      `${windowLabel(l.kind, 'long')} limit: ${pct}% used` +
       (l.left !== undefined ? `, resets in ${fmtSpan(l.left)}` : '') +
       (l.fullIn !== undefined ? `. At this pace it is full in ${fmtSpan(l.fullIn)}, before the reset` : '') +
       '. The tick is how far through the window the clock is.',
     segs: [
       { kind: 'icon', name: is5h ? 'gauge' : 'calendar' },
-      { kind: 'text', s: is5h ? '5h' : '7d', dim: true },
+      { kind: 'text', s: windowLabel(l.kind, 'short'), dim: true },
       { kind: 'bar', pct: l.pct, mark: l.mark },
       { kind: 'text', s: `${pct}%`, bold: !l.stale, dim: l.stale },
       ...(detail >= 2 && l.fullIn !== undefined ? ([{ kind: 'text', s: `full ${fmtSpan(l.fullIn)}`, warn: true }] as const) : []),
@@ -123,11 +124,23 @@ function testsPill(s: Stats): Pill | undefined {
   }
 }
 
+// Extra weekly windows (seven_day_fable, ...): "Fable 7d" short, "Fable 7-day" long.
+// label: the API's display name; the kind's suffix is the fallback.
+export function windowLabel(kind: string, form: 'short' | 'long', label?: string): string {
+  const name = label ? `${label} ` : kind.startsWith('seven_day_') ? kind.slice(10).split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') + ' ' : ''
+  const base = kind === 'five_hour' ? ['5h', '5-hour'] : ['7d', '7-day']
+  return name + base[form === 'short' ? 0 : 1]
+}
+
 export type View = {
   meters: (detail: Detail) => Column[]
   session: (detail: Detail) => Column[]
   pills: Pill[]
   limits: (Limit | undefined)[]
+  // Extra weekly windows: drawn in the details pane only, never in the band.
+  extras: Limit[]
+  // Per-model shares of the all-models weekly limit ("Fable", 11): drawn inside the pane's 7-day row.
+  shares: { label: string; pct: number }[]
   context: Context
   avg?: number
   last?: number
@@ -143,6 +156,11 @@ export function buildView(s: Stats, usage: SessionUsage, now: number): View {
   const limits = [readLimit(live, 'five_hour', now), readLimit(live, 'seven_day', now)].map(l =>
     l && stale ? { ...l, stale: true, fullIn: undefined, alert: level(l.pct) } : l,
   )
+  const extras = live.rateLimits.filter(r => r.kind.startsWith('seven_day_')).flatMap(r => readLimit(live, r.kind, now) ?? [])
+  const shares = live.rateLimits.flatMap(r => {
+    const of = (r as RateLimit).ofWeekly
+    return r.kind.startsWith('seven_day_') && typeof of === 'number' ? [{ label: windowLabel(r.kind, 'short', (r as RateLimit).label).replace(/ 7d$/, ''), pct: of }] : []
+  })
   const context = readContext(s, usage)
   const cache = cacheRate(s)
   const inTokens = scan.tokens.input + scan.tokens.cacheWrite
@@ -215,7 +233,7 @@ export function buildView(s: Stats, usage: SessionUsage, now: number): View {
     return tests ? [work, [tests]] : [work]
   }
   const pills = [...meters(2), ...session(2)].flat(2).filter((p): p is Pill => p !== undefined)
-  return { meters, session, pills, limits, context, avg, last, cache }
+  return { meters, session, pills, limits, extras, shares, context, avg, last, cache }
 }
 
 // The layouts to try, roomiest first: two lines with full, then less, detail; then four lines.

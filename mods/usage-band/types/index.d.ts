@@ -4,7 +4,9 @@ export type Tokens = { input: number; output: number; cacheRead: number; cacheWr
 export type TurnLog = { startAt: number; ms: number; ctx: number }
 export type Scan = { agentMs: number; turns: number; tokens: Tokens; compactions: number; log: TurnLog[]; sinceCompact: number }
 // A rate limit as the engine reports it: kind five_hour or seven_day, percentUsed 0 to 100.
-export type RateLimit = { kind: string; percentUsed: number; resetsAt?: string }
+// ofWeekly: a per-model limit's use as a share of the all-models weekly limit (weekly_scoped_shares).
+// label: the API's display name of a per-model limit ("Fable").
+export type RateLimit = { kind: string; percentUsed: number; resetsAt?: string; ofWeekly?: number; label?: string }
 // One model's sums over a period and source, from the models ledger (hooks/models.ts); dollars are worked out when drawn.
 export type ModelRow = Tokens & { period: 'day' | 'week' | 'month' | 'all'; source: 'all' | 'main' | 'sub'; model: string; sessions: number }
 export type Tests = { state: 'pass' | 'fail' | 'stale'; passed?: number; failed?: number }

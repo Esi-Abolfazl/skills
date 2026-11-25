@@ -17,6 +17,8 @@ export type Pill = { tone: Tone; segs: Seg[]; title: string; glyph: string; aler
 
 export const HOUR = 3_600_000
 export const WINDOWS: Record<string, number> = { five_hour: 5 * HOUR, seven_day: 168 * HOUR }
+// Per-model weekly windows (seven_day_fable, ...) span the same week as seven_day.
+export const windowSpan = (kind: string): number | undefined => (kind.startsWith('seven_day_') ? WINDOWS.seven_day : WINDOWS[kind])
 
 export function fmtTokens(n: number): string {
   const one = (x: number) => x.toFixed(1).replace(/\.0$/, '')
@@ -36,7 +38,7 @@ export function fmtSpan(ms: number): string {
 
 // The bar's tick: how far through the window the clock is, so usage ahead of the tick burns too fast.
 export function windowMark(kind: string, resetsAt: string | undefined, now: number): number | undefined {
-  const span = WINDOWS[kind]
+  const span = windowSpan(kind)
   if (span === undefined || resetsAt === undefined) return undefined
   const left = Date.parse(resetsAt) - now
   if (!Number.isFinite(left)) return undefined

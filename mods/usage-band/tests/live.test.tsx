@@ -124,3 +124,30 @@ describe('details', () => {
     await pane.unmount()
   })
 })
+
+describe('extra weekly limits', () => {
+  test('the details pane lists them; the band does not', async ($, on) => {
+    const at = (ms: number) => new Date(NOW + ms).toISOString()
+    on('session.usage', () => ({ value: { startedAt: NOW, context: { tokens: 1000, window: 10_000, percent: 10 }, cost: { usd: 1 }, rateLimits: [
+      { kind: 'five_hour', percentUsed: 20, resetsAt: at(3_600_000) },
+      { kind: 'seven_day', percentUsed: 41, resetsAt: at(86_400_000) },
+      { kind: 'seven_day_fable', percentUsed: 12, resetsAt: at(7_200_000), ofWeekly: 6 },
+    ] } }) as never)
+    on('clock.now', () => ({ value: NOW }))
+    const band = await $.ui.mount({ plugin: 'usage-band', surface: 'terminal', ...BAND } as never)
+    await band.resize({ columns: 200, rows: 4, in: 'band' } as never)
+    expect(bandRows(await band.drawn({ in: 'band' } as never)).join('\n')).not.toContain('Fable')
+    await band.unmount()
+    const pane = await $.ui.mount({ plugin: 'usage-band', surface: 'desktop', ...PANE } as never)
+    const cards = (await pane.findAll({ type: 'Client' } as never)) as unknown as { props: { props: { id: string; summary: string } } }[]
+    expect(cards.find(c => c.props.props.id === 'limits')?.props.props.summary).toBe('5h 20% · Fable 7d 12% · 7d 41%')
+    // Open the Limits card, then read its 7-day breakdown on a fresh mount.
+    await (pane as any).resize({ columns: 60, rows: 1, in: 'open-limits' })
+    await (pane as any).pointer({ type: 'up', x: 55, y: 0, button: 'left', in: 'open-limits' })
+    await pane.unmount()
+    const open = await $.ui.mount({ plugin: 'usage-band', surface: 'desktop', ...PANE } as never)
+    expect(await open.find({ type: 'Text', text: /^Fable 6% and other models 35%\.$/ } as never)).toBeDefined()
+    await open.unmount()
+  })
+})
+

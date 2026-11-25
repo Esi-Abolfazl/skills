@@ -3,7 +3,7 @@ import { describe, expect, test } from 'claude-code/testing'
 import type { Stats } from '../types'
 import { HOUR, bandWidth } from '../hooks/pills'
 import { isCode, isTestCommand, testOutcome } from '../hooks/testrun'
-import { buildView, cacheRate, layouts, readContext, readLimit } from '../hooks/view'
+import { buildView, cacheRate, layouts, readContext, readLimit, windowLabel } from '../hooks/view'
 import { NO_SCAN } from '../hooks/scan'
 
 const NOW = Date.parse('2026-10-16T12:00:00Z')
@@ -23,6 +23,15 @@ describe('view', () => {
     const l = readLimit(u, 'seven_day', NOW)!
     expect(l.fullIn).toBe(undefined)
     expect(l.alert).toBe('hot')
+  })
+  test('a per-model weekly row gets the 7-day mark and pace, and its API label', () => {
+    const u = usage({ rateLimits: [{ kind: 'seven_day_fable', label: 'Fable', percentUsed: 50, resetsAt: new Date(NOW + 96 * HOUR).toISOString() }] })
+    const l = readLimit(u, 'seven_day_fable', NOW)!
+    expect(Math.round(l.mark! * 100)).toBe(4286)
+    expect(l.fullIn).toBe(72 * HOUR)
+    expect(l.label).toBe('Fable')
+    expect([windowLabel('seven_day_fable', 'short', 'Fable'), windowLabel('seven_day_fable', 'long', 'Fable')]).toEqual(['Fable 7d', 'Fable 7-day'])
+    expect(windowLabel('seven_day_big_one', 'short')).toBe('Big One 7d')
   })
   test('before a reply, the last kept limits show faded, without pace; a reset window drops out', () => {
     const at = (h: number) => new Date(NOW + h * HOUR).toISOString()

@@ -11,7 +11,7 @@ import type { Tints } from './account'
 import { VERSION } from './version'
 import { MODELS_AWK, MODELS_QUERY_AWK, MODELS_SESSION_AWK, MODELS_SH, PERIODS, SOURCES, parseQuery, windowStarts } from './models'
 import { costOf, stale as pricesStale } from './prices'
-import { buildModels, buildView, layouts, polledFresh } from './view'
+import { buildModels, buildView, layouts, polledFresh, windowLabel } from './view'
 
 type ClientEl = (p: { key: string; module: string; props: unknown; width: string; height?: string }) => never
 type SvgEl = (p: { source: string; width: number; height: number; alt: string }) => never
@@ -60,29 +60,94 @@ async function findTranscript($: EngineInterface): Promise<string> {
   return path
 }
 
-// The last rate limits, in one file for every session, overwritten in place, so it never grows.
-const limitsFile = async ($: EngineInterface) => `${await configDir($)}/usage-band/limits.json`
+// The last rate limits, one small file per account (sessions of one account share it, overwritten in place, so it
+// never grows). Accounts share one config dir, so a shared file would show one account the other's limits.
+// Old shape: a bare array in limits.json. New: {at, limits, plan}; `at` lets the launcher show how fresh it is.
+const KEEP_FRESH_MS = 300_000
+let keptAt = 0
+// The account's plan name, kept in the same file; a failed poll never clears it.
+let plan: string | undefined
+const limitsFile = async ($: EngineInterface) => {
+  const dir = `${await configDir($)}/usage-band`
+  const id = await $.env.get('CLAUDE_CODE_ACCOUNT_UUID').catch(() => undefined)
+  return id ? `${dir}/limits/${id}.json` : `${dir}/limits.json`
+}
 const isRateLimit = (l: unknown): l is RateLimit => {
   const r = l as Partial<RateLimit> | null
   return typeof r?.kind === 'string' && typeof r.percentUsed === 'number' && (r.resetsAt === undefined || typeof r.resetsAt === 'string')
 }
 async function readKeptLimits($: EngineInterface): Promise<RateLimit[] | undefined> {
-  const r = await $.process.run(['cat', await limitsFile($)]).catch(() => undefined)
+  const file = await limitsFile($)
+  const cat = (path: string) => $.process.run(['cat', path]).catch(() => undefined)
+  let r = await cat(file)
+  // An account with no file of its own yet reads the old shared one (read only, never written).
+  const legacy = file.replace(/\/limits\/[^/]+\.json$/, '/limits.json')
+  if (r?.exitCode !== 0 && legacy !== file) r = await cat(legacy)
   if (r?.exitCode !== 0) return undefined
   try {
     const kept: unknown = JSON.parse(r.stdout)
+    const p = (kept as { plan?: unknown } | null)?.plan
+    if (typeof p === 'string' && p !== '') plan ??= p
+    const list = Array.isArray(kept) ? kept : (kept as { limits?: unknown } | null)?.limits
     // Shared by every session and version: an entry not in this shape would break every draw.
-    return Array.isArray(kept) ? kept.filter(isRateLimit) : undefined
+    return Array.isArray(list) ? list.filter(isRateLimit) : undefined
   } catch {
     return undefined
   }
 }
-// Written only when the reading changed, so at most once a turn.
+const writeKept = async ($: EngineInterface, list: unknown[], now: number) => {
+  await $.process.run(['/bin/sh', '-c', 'mkdir -p "$(dirname "$1")" && printf %s "$2" > "$1.tmp" && mv "$1.tmp" "$1"', 'sh', await limitsFile($), JSON.stringify({ at: now, limits: list, ...(plan ? { plan } : {}) })])
+  keptAt = now
+}
+// Written when the reading changed, or the file is older than KEEP_FRESH_MS.
 async function keepLimits($: EngineInterface, limits: RateLimit[]) {
-  const json = JSON.stringify(limits.map(({ kind, percentUsed, resetsAt }) => ({ kind, percentUsed, resetsAt })))
-  if (json === JSON.stringify((await load($)).lastLimits ?? null)) return
-  await $.process.run(['/bin/sh', '-c', 'mkdir -p "$(dirname "$1")" && printf %s "$2" > "$1"', 'sh', await limitsFile($), json])
-  await update($, stats, s => ({ ...EMPTY, ...s, lastLimits: JSON.parse(json) }))
+  const now = await $.clock.now()
+  const last = (await load($)).lastLimits
+  // An engine-only reading has no per-model windows: the kept ones stay until their own reset.
+  const carried = limits.some(l => l.kind.startsWith('seven_day_')) ? [] : (last ?? []).filter(l => l.kind.startsWith('seven_day_') && l.resetsAt !== undefined && Date.parse(l.resetsAt) > now)
+  const list = [...limits, ...carried].map(({ kind, percentUsed, resetsAt, ofWeekly, label }) => ({ kind, percentUsed, resetsAt, ofWeekly, label }))
+  const same = JSON.stringify(list) === JSON.stringify(last ?? null)
+  if (same && now - keptAt < KEEP_FRESH_MS) return
+  await writeKept($, list, now)
+  if (!same) await update($, stats, s => ({ ...EMPTY, ...s, lastLimits: JSON.parse(JSON.stringify(list)) }))
+}
+
+// Plan name for the launcher. shortcut: the endpoint is undocumented; a changed shape or a failure keeps the
+// stored plan. Replace it when the engine exposes the account's plan itself.
+const PROFILE_URL = 'https://api.anthropic.com/api/oauth/profile'
+const PLAN_MS = 3_600_000
+let planAt = 0
+export function planName(orgType?: string, tier?: string): string | undefined {
+  if (!orgType) return undefined
+  if (orgType === 'claude_max') return tier?.endsWith('_20x') ? 'Max 20x' : tier?.endsWith('_5x') ? 'Max 5x' : 'Max'
+  const known: Record<string, string> = { claude_pro: 'Pro', claude_team: 'Team', claude_enterprise: 'Enterprise' }
+  return known[orgType] ?? orgType.replace(/^claude_/, '').split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
+export function parsePlan(text: string): string | undefined {
+  try {
+    const b = JSON.parse(text) as { organization?: { organization_type?: unknown; rate_limit_tier?: unknown }; account?: { has_claude_max?: unknown; has_claude_pro?: unknown } } | null
+    const str = (v: unknown) => (typeof v === 'string' && v !== '' ? v : undefined)
+    const fromOrg = planName(str(b?.organization?.organization_type), str(b?.organization?.rate_limit_tier))
+    if (fromOrg) return fromOrg
+    if (b?.account?.has_claude_max === true) return 'Max'
+    if (b?.account?.has_claude_pro === true) return 'Pro'
+  } catch {}
+  return undefined
+}
+async function pollPlan($: EngineInterface) {
+  const now = await $.clock.now()
+  if (now - planAt < PLAN_MS) return
+  planAt = now
+  try {
+    const auth = (await $.session.authorize())?.handle
+    if (auth === undefined) return
+    const r = await $.http.fetch(PROFILE_URL, { auth, headers: { 'anthropic-beta': 'oauth-2025-04-20' } })
+    const found = r.ok ? parsePlan(r.text) : undefined
+    if (found === undefined || found === plan) return
+    plan = found
+    const list = (await load($)).lastLimits
+    if (list) await writeKept($, list, now)
+  } catch {}
 }
 
 // The engine's reading comes only from this session's own replies, so other sessions and claude.ai never move it.
@@ -96,17 +161,29 @@ const BACKOFF_MS = 300_000
 let backoffUntil = 0
 let polling = false
 export function parseUsage(text: string): RateLimit[] {
-  let body: Record<string, { utilization?: unknown; resets_at?: unknown } | null | undefined>
+  let body: (Record<string, { utilization?: unknown; resets_at?: unknown } | null | undefined> & { limits?: unknown }) | null
   try {
     body = JSON.parse(text)
   } catch {
     return []
   }
-  return (['five_hour', 'seven_day'] as const).flatMap(kind => {
-    const w = body?.[kind]
+  const windows: RateLimit[] = (['five_hour', 'seven_day'] as const).flatMap(kind => {
+    const w = body?.[kind] as { utilization?: unknown; resets_at?: unknown } | null | undefined
     if (typeof w?.utilization !== 'number') return []
     return [{ kind, percentUsed: Math.round(w.utilization * 10) / 10, resetsAt: typeof w.resets_at === 'string' ? w.resets_at : undefined }]
   })
+  // Per-model weekly limits (Fable, ...) come only in `limits` as weekly_scoped entries. They are kept as
+  // seven_day_<model> for the launcher and the details pane; the band draws only five_hour and seven_day.
+  const shares = new Map<number, number>()
+  for (const x of Array.isArray((body as any)?.weekly_scoped_shares) ? (body as any).weekly_scoped_shares : [])
+    if (typeof x?.limit_index === 'number' && typeof x?.used_percent_of_weekly === 'number') shares.set(x.limit_index, x.used_percent_of_weekly)
+  const scoped = (Array.isArray(body?.limits) ? body.limits : []).flatMap((l: any, i: number) => {
+    const name = l?.scope?.model?.display_name
+    if (l?.kind !== 'weekly_scoped' || l.scope?.surface != null || typeof name !== 'string' || !name || typeof l.percent !== 'number') return []
+    const ofWeekly = shares.get(i)
+    return [{ kind: `seven_day_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`, percentUsed: l.percent, label: name, resetsAt: typeof l.resets_at === 'string' ? l.resets_at : undefined, ...(ofWeekly !== undefined ? { ofWeekly } : {}) }]
+  })
+  return [...windows, ...scoped]
 }
 async function pollLimits($: EngineInterface) {
   const now = await $.clock.now()
@@ -126,6 +203,7 @@ async function pollLimits($: EngineInterface) {
     }
     await keepLimits($, limits)
     await update($, stats, s => ({ ...EMPTY, ...s, limitsAt: now }))
+    void pollPlan($)
   } catch {
     backoffUntil = now + BACKOFF_MS
   } finally {
@@ -540,7 +618,7 @@ export const register: Register = (on, options) => {
     const log = s.scan.log.slice(-10)
     // turnCosts covers only turns since the band loaded: they line up with the newest turns.
     const turnCost = (i: number) => s.turnCosts[s.turnCosts.length - (log.length - i)]
-    const limits = v.limits.filter((l): l is NonNullable<typeof l> => l !== undefined)
+    const limits = [v.limits[0], ...v.extras, v.limits[1]].filter((l): l is NonNullable<typeof l> => l !== undefined)
     const period = s.period ?? 'week'
     const source = s.source ?? 'all'
     const m = buildModels(s.models, period, source)
@@ -604,15 +682,24 @@ export const register: Register = (on, options) => {
         {card(
           'limits',
           'Limits',
-          join(...limits.map(l => `${l.kind === 'five_hour' ? '5h' : '7d'} ${Math.round(l.pct)}%`)),
+          join(...limits.map(l => `${windowLabel(l.kind, 'short', l.label)} ${Math.round(l.pct)}%`)),
           limits.length === 0
             ? [note('none', 'No reading yet.')]
             : [
                 ...(limits.some(l => l.stale) ? [note('stale', 'Last seen in an earlier session: no reply here yet.')] : []),
                 ...limits.flatMap(l => [
-                headline(`h-${l.kind}`, `${l.kind === 'five_hour' ? '5-hour' : '7-day'} · ${Math.round(l.pct)}% used`, l.left !== undefined ? `resets in ${fmtSpan(l.left)}` : ''),
-                bar(`b-${l.kind}`, [{ n: l.pct, color: meterColor(l.pct) }], 100, { at: l.mark }),
-                ...(l.fullIn !== undefined ? [note(`f-${l.kind}`, `At this pace it is full in ~${fmtSpan(l.fullIn)}, before the reset.`, true)] : []),
+                headline(`h-${l.kind}`, `${windowLabel(l.kind, 'long', l.label)} · ${Math.round(l.pct)}% used`, l.left !== undefined ? `resets in ${fmtSpan(l.left)}` : ''),
+                ...(l.kind === 'seven_day' && v.shares.length > 0
+                  ? (() => {
+                      const used = v.shares.reduce((n, x) => n + x.pct, 0)
+                      const rest = Math.max(0, l.pct - used)
+                      return [
+                        bar(`b-${l.kind}`, [...v.shares.map((x, i) => ({ n: x.pct, color: color(i + 1) })), { n: rest, color: meterColor(l.pct) }], 100, { at: l.mark }),
+                        note(`s-${l.kind}`, `${v.shares.map(x => `${x.label} ${Math.round(x.pct)}%`).join(', ')} and other models ${Math.round(rest)}%.`),
+                      ]
+                    })()
+                  : [bar(`b-${l.kind}`, [{ n: l.pct, color: meterColor(l.pct) }], 100, { at: l.mark })]),
+                ...(l.fullIn !== undefined ? [note(`f-${l.kind}`, `Full in ~${fmtSpan(l.fullIn)}, before the reset.`, true)] : []),
               ]),
               ],
         )}
