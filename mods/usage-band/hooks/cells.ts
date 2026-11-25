@@ -86,9 +86,6 @@ export function layCells(grids: Column[][], fill: number): Laid {
   return { rows, width: edge }
 }
 
-// The first layout that fits `columns`, else the last (narrowest) one.
-export const pickLayout = (layouts: Column[][][], columns: number) => layouts.find(g => gridsCells(g) <= columns) ?? layouts[layouts.length - 1]!
-
 export const hit = (laid: Laid, x: number, y: number) => laid.rows[y]?.find(p => x >= p.x && x < p.x + p.w)?.pill
 
 // Which section of the details pane a card opens.

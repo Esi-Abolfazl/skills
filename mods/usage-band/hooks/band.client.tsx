@@ -2,13 +2,16 @@
 // a click on a card into a post naming its pane section. No `$` here: the hooks module answers.
 import type { ClientSurface } from 'claude-code'
 
-import { ACCENT, ALERT, BAR_CELLS, GLYPH, SECTION, hit, layCells, pickLayout, tint } from './cells'
+import { ACCENT, ALERT, BAR_CELLS, GLYPH, SECTION, hit, gridsCells, layCells, tint } from './cells'
 import type { Placed } from './cells'
+import { CELL_H, CELL_W, STRIP_PX, pickWithLabel, stripColor, stripSvg, washOf } from './account'
+import type { Look } from './account'
 import { level } from './pills'
 import type { Column, Seg } from './pills'
 
-type Props = { layouts: Column[][][] }
+type Props = { layouts: Column[][][] } & Partial<Look>
 type State = { hover?: string }
+type SvgEl = (p: { source: string; width: number; height: number; alt: string }) => never
 
 const SPARK = '▁▂▃▄▅▆▇█'
 const meter = (pct: number) => {
@@ -18,11 +21,22 @@ const meter = (pct: number) => {
 
 export default function Band(props: Props, surface: ClientSurface<State>) {
   const { Box, Text } = surface.elements
-  const laid = layCells(pickLayout(props.layouts, surface.columns), surface.columns)
+  const Svg = 'Svg' in surface.elements ? (surface.elements as unknown as { Svg: SvgEl }).Svg : undefined
+  const account = props.account
+  const look: Look = { account, labelSide: props.labelSide ?? 'off', whenWrapped: props.whenWrapped ?? false }
+  // Cells the strip takes (a 1-cell Box on the terminal, an Svg STRIP_PX wide elsewhere) and the tint's padding.
+  const stripW = Svg ? Math.ceil(STRIP_PX / CELL_W) : 1
+  const roomFor = (strip: boolean) => surface.columns - (account ? 2 + (strip ? stripW : 0) : 0)
+  const picked = pickWithLabel(look, props.layouts, (g, strip) => gridsCells(g) <= roomFor(strip))
+  const side = picked.strip && look.labelSide !== 'off' ? look.labelSide : undefined
+  const stripCols = side ? stripW : 0
+  const lead = account ? 1 + (side === 'left' ? stripCols : 0) : 0
+  const room = roomFor(picked.strip)
+  const laid = layCells(picked.grid, room)
   const hover = surface.state?.hover
 
   surface.onPointer(e => {
-    const card = hit(laid, e.x, e.y)
+    const card = hit(laid, e.x - lead, e.y)
     // Tones are unique on the band, so a two-row card lights up as one.
     const id = card?.tone
     if (e.type === 'up' && e.button === 'left' && card) surface.post({ open: SECTION[card.tone] })
@@ -65,13 +79,24 @@ export default function Band(props: Props, surface: ClientSurface<State>) {
     )
   }
 
-  return (
+  const rows = (
     <Box flexDirection="column">
       {laid.rows.map((row, y) => (
         <Box key={`${y}`} flexDirection="row">
           {row.map((p, i) => card(p, `${y}:${i}`, p.x - (i === 0 ? 0 : row[i - 1]!.x + row[i - 1]!.w)))}
         </Box>
       ))}
+    </Box>
+  )
+  if (!account) return rows
+
+  const height = laid.rows.length * CELL_H
+  const strip = side && (Svg ? <Svg source={stripSvg(account, side, height)} width={STRIP_PX} height={height} alt={account.label} /> : <Box key="strip" width={1} backgroundColor={stripColor(account)} />)
+  return (
+    <Box flexDirection="row" backgroundColor={washOf(account)}>
+      {side === 'left' && strip}
+      <Box paddingX={1}>{rows}</Box>
+      {side === 'right' && strip}
     </Box>
   )
 }

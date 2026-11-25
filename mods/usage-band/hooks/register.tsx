@@ -6,6 +6,7 @@ import { bandSvg, bandText, bandWidth, fmtSpan, fmtTokens, meterColor, slotPx } 
 import { NO_SCAN, SCAN_AWK, SCAN_SH, parseScan } from './scan'
 import { isCode, isTestCommand, testOutcome } from './testrun'
 import { ACCENT } from './cells'
+import { PANEL_PAD, SLOT_UNDER, STRIP_PX, lookOf, panelSvg, pickWithLabel } from './account'
 import { VERSION } from './version'
 import { MODELS_AWK, MODELS_QUERY_AWK, MODELS_SESSION_AWK, MODELS_SH, PERIODS, SOURCES, parseQuery, windowStarts } from './models'
 import { costOf, stale as pricesStale } from './prices'
@@ -208,7 +209,7 @@ const clock = (ms: number) => {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     // First, so a failure below never stops it. A Client that fails again is dropped again.
     $.clock.every(POLL_MS, () => pollLimits($))
@@ -324,43 +325,66 @@ export const register: Register = on => {
     const alt = v.pills.map(p => p.title).join('. ')
     const table = $.ui.resolve(e)
     const { Box, Text } = table
-
+    const opts = options ?? {}
+    const tinted = typeof opts.accountTints === 'string' && opts.accountTints.trim() !== ''
+    const look = lookOf(tinted ? await $.env.get('CLAUDE_CODE_ACCOUNT_UUID').catch(() => undefined) : undefined, opts)
+    // The panel is drawn larger by the host's padding and pulled out by one cell (Space is cells, not px;
+    // shortcut: the desktop may ignore negative vertical margins, unverified).
+    const room = (cols: number, strip: boolean) => slotPx(cols) + SLOT_UNDER - 2 * PANEL_PAD - (strip ? STRIP_PX : 0)
 
     // The terminal: chips in its monospace cells, laid out to the region's real width; they take clicks.
     if (e.surface === 'terminal' && 'Client' in table && !down.has(e.surface)) {
       const { Client } = table as unknown as { Client: ClientEl }
       // Client props are plain JSON: the round trip drops unset fields and turns a missing cell into null.
-      const props = JSON.parse(JSON.stringify({ layouts: layouts(v) }))
+      const props = JSON.parse(JSON.stringify({ layouts: layouts(v), ...look }))
       return <Client key="band" module="./band.client.tsx" props={props} width="100%" />
     }
     // Every other surface draws the SVG. Its cells are not monospace (the desktop's are proportional),
     // so the chips would not line up there.
     if ('Svg' in table) {
       const { Svg } = table as unknown as { Svg: SvgEl }
-      const slot = slotPx(e.props.bodyColumns)
-      const all = layouts(v)
-      const grids = all.find(g => bandWidth(...g) <= slot) ?? all[all.length - 1]!
+      const fitAt = (strip: boolean) => (look.account ? room(e.props.bodyColumns, strip) : slotPx(e.props.bodyColumns))
+      const { grid: grids, strip } = pickWithLabel(look, layouts(v), (g, st) => bandWidth(...g) <= fitAt(st))
+      const slot = fitAt(strip)
+      // The wash panel is drawn inside the SVG, so its rounded corners and the strip clip exactly.
+      const side = strip ? look.labelSide : 'off'
       const svg = bandSvg(grids, slot)
-      const drawing = <Svg source={svg.source} width={svg.width} height={svg.height} alt={alt} />
+      const panel = look.account ? panelSvg(look.account, side, svg) : undefined
+      const whole = panel ?? svg
+      const drawing = <Svg source={whole.source} width={whole.width} height={whole.height} alt={alt} />
       if (!('Client' in table) || down.has(e.surface)) return drawing
       // An Svg takes no clicks, so invisible strips lie over it, one per row of cards, each as tall as
       // its share of the drawing (rows are evenly spaced, so the strip edges fall in the gaps).
       const { Client } = table as unknown as { Client: ClientEl }
       const tops = [...new Set(svg.boxes.map(b => b.y))].sort((a, b) => a - b)
+      const pct = (n: number, of: number) => `${Math.round((100 * n) / of)}%`
+      const rows = tops.map(top => {
+        // A two-row card belongs to every strip it spans.
+        const row = JSON.parse(JSON.stringify({ boxes: svg.boxes.filter(b => b.y <= top && top < b.y + b.h), width: svg.width }))
+        return (
+          <Box key={`row-${top}`} width="100%" height={`${100 / tops.length}%`}>
+            <Client key={`hit-${top}`} module="./hit.client.tsx" props={row} width="100%" height="100%" />
+          </Box>
+        )
+      })
       return (
         // No size on the wrapper: a Box measures in cells, the Svg in pixels; it wraps the drawing.
         <Box position="relative">
           {drawing}
           <Box position="absolute" top={0} left={0} width="100%" height="100%" flexDirection="column">
-            {tops.map(top => {
-              // A two-row card belongs to every strip it spans.
-              const row = JSON.parse(JSON.stringify({ boxes: svg.boxes.filter(b => b.y <= top && top < b.y + b.h), width: svg.width }))
-              return (
-                <Box key={`row-${top}`} width="100%" height={`${100 / tops.length}%`}>
-                  <Client key={`hit-${top}`} module="./hit.client.tsx" props={row} width="100%" height="100%" />
+            {panel ? (
+              <>
+                <Box height={pct(panel.y, whole.height)} />
+                <Box height={pct(svg.height, whole.height)} flexDirection="row">
+                  <Box width={pct(panel.x, whole.width)} />
+                  <Box width={pct(svg.width, whole.width)} flexDirection="column">
+                    {rows}
+                  </Box>
                 </Box>
-              )
-            })}
+              </>
+            ) : (
+              rows
+            )}
           </Box>
         </Box>
       )

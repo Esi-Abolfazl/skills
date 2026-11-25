@@ -1,11 +1,40 @@
 {
   "name": "usage-band",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "description": "Pill band above the prompt: 5h/7d limits, tokens, context, compactions, agent time, cost, tests",
   "types": "./types/index.d.ts",
   "author": {
     "name": "Esi-Abolfazl"
   },
   "repository": "https://github.com/Esi-Abolfazl/skills",
-  "license": "MIT"
+  "license": "MIT",
+  "userConfig": {
+    "accountTints": {
+      "type": "string",
+      "title": "Account tints",
+      "description": "Comma-separated accountId=LABEL:#wash[:#solid] entries (#solid colors the label strip, else #wash), e.g. 00000000-0000-0000-0000-000000000000=WORK:#3b82f6:#2563eb",
+      "default": ""
+    },
+    "accountLabel": {
+      "type": "string",
+      "title": "Account label",
+      "description": "Draw the account label as a vertical strip on the left or right edge of the band",
+      "options": [
+        "off",
+        "left",
+        "right"
+      ],
+      "default": "off"
+    },
+    "accountLabelWhenWrapped": {
+      "type": "string",
+      "title": "Label when wrapped",
+      "description": "Show the label when the band is not on its widest layout (it wraps to more rows)",
+      "options": [
+        "hide",
+        "show"
+      ],
+      "default": "hide"
+    }
+  }
 }
