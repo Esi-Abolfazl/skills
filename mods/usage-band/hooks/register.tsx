@@ -6,7 +6,8 @@ import { bandSvg, bandText, bandWidth, fmtSpan, fmtTokens, meterColor, slotPx } 
 import { NO_SCAN, SCAN_AWK, SCAN_SH, parseScan } from './scan'
 import { isCode, isTestCommand, testOutcome } from './testrun'
 import { ACCENT } from './cells'
-import { PANEL_PAD, SLOT_UNDER, STRIP_PX, lookOf, panelSvg, pickWithLabel } from './account'
+import { PANEL_PAD, SLOT_UNDER, STRIP_PX, TINT_USAGE, lookOf, panelSvg, parseTintArgs, parseTints, pickWithLabel } from './account'
+import type { Tints } from './account'
 import { VERSION } from './version'
 import { MODELS_AWK, MODELS_QUERY_AWK, MODELS_SESSION_AWK, MODELS_SH, PERIODS, SOURCES, parseQuery, windowStarts } from './models'
 import { costOf, stale as pricesStale } from './prices'
@@ -21,6 +22,17 @@ const PANE = 'usage-band'
 const down = new Set<string>()
 const RETRY_MS = 30_000
 const EMPTY: Stats = { transcript: '', scan: NO_SCAN, turnCosts: [] }
+// Reading it in a render subscribes that draw, so a `set` redraws the band.
+const tintsAtom = atom({ plugin: 'usage-band', key: 'tints' } as const, { loaded: false, tints: {} as Tints })
+const storedTints = async ($: EngineInterface): Promise<Tints> => {
+  const kept = await $.store.get('tints').catch(() => undefined)
+  return kept && typeof kept === 'object' ? (kept as Tints) : {}
+}
+// A render cannot write state, so before session.start has loaded the atom it reads the store itself.
+const loadTints = async ($: EngineInterface): Promise<Tints> => {
+  const a = await read($, tintsAtom)
+  return a.loaded ? a.tints : storedTints($)
+}
 const stats = atom({ plugin: 'usage-band', key: 'stats' } as const, EMPTY)
 // A Stats kept by an older version lacks newer fields; the spread fills them in.
 const load = async ($: EngineInterface): Promise<Stats> => {
@@ -218,6 +230,8 @@ export const register: Register = (on, options) => {
       down.clear()
       $.ui.invalidate('ui.render')
     })
+    const tints = await storedTints($)
+    await update($, tintsAtom, () => ({ loaded: true, tints }))
     await $.command.register({ name: 'usage-band', description: 'Open the usage details pane (limits, context, tokens, turns, tests)' })
     // The cost so far is the baseline the next turn's own cost is measured from.
     const usd = (await $.session.usage().catch(() => undefined))?.cost?.usd
@@ -232,9 +246,35 @@ export const register: Register = (on, options) => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  on('command.run', { command: 'usage-band' }, async $ => {
-    await openDetails($)
-    return { text: 'Usage details opened.' }
+  on('command.run', { command: 'usage-band' }, async ($, e) => {
+    const [verb, ...rest] = e.args.trim().split(/\s+/)
+    if (verb === '') {
+      await openDetails($)
+      return { text: 'Usage details opened.' }
+    }
+    if (verb !== 'tint') return { text: TINT_USAGE }
+    const id = await $.env.get('CLAUDE_CODE_ACCOUNT_UUID').catch(() => undefined)
+    if (!id) return { text: `This window has no account id. ${TINT_USAGE}` }
+    // Fresh from the store: another window may have tinted its own account since this session loaded.
+    const tints = await storedTints($)
+    const mine = tints[id]
+    const word = rest.join(' ')
+    const managed = parseTints(typeof options?.accountTints === 'string' ? options.accountTints : '').has(id)
+    if (word === '') {
+      if (managed) return { text: 'The accountTints setting controls the tint of this window. ' + TINT_USAGE }
+      return { text: (mine ? `Tint: ${mine.label}, ${mine.color}, label ${mine.side}.` : 'No tint set.') + ' ' + TINT_USAGE }
+    }
+    const next = { ...tints }
+    if (word.toLowerCase() === 'off') delete next[id]
+    else {
+      const t = parseTintArgs(word)
+      if (!t) return { text: TINT_USAGE }
+      next[id] = t
+    }
+    await $.store.set('tints', next)
+    await update($, tintsAtom, () => ({ loaded: true, tints: next }))
+    const done = word.toLowerCase() === 'off' ? 'Tint removed.' : `Tint set: ${next[id]!.label}.`
+    return { text: managed ? `${done} The accountTints setting controls this window, so the change will not show.` : done }
   })
 
   on('session.compact', async ($, e, next) => {
@@ -326,8 +366,7 @@ export const register: Register = (on, options) => {
     const table = $.ui.resolve(e)
     const { Box, Text } = table
     const opts = options ?? {}
-    const tinted = typeof opts.accountTints === 'string' && opts.accountTints.trim() !== ''
-    const look = lookOf(tinted ? await $.env.get('CLAUDE_CODE_ACCOUNT_UUID').catch(() => undefined) : undefined, opts)
+    const look = lookOf(await $.env.get('CLAUDE_CODE_ACCOUNT_UUID').catch(() => undefined), opts, await loadTints($))
     // The panel is drawn larger by the host's padding and pulled out by one cell (Space is cells, not px;
     // shortcut: the desktop may ignore negative vertical margins, unverified).
     const room = (cols: number, strip: boolean) => slotPx(cols) + SLOT_UNDER - 2 * PANEL_PAD - (strip ? STRIP_PX : 0)

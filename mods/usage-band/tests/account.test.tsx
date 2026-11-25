@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { lookOf, mix, panelSvg, parseTints, pickWithLabel } from '../hooks/account'
+import { lookOf, mix, panelSvg, parseColor, parseTintArgs, parseTints, pickWithLabel } from '../hooks/account'
 
 const ID = '00000000-0000-0000-0000-000000000000'
 const TINTS = `${ID}=WORK:#3b82f6:#2563eb`
@@ -57,6 +57,72 @@ describe('parseTints', () => {
     const l = lookOf(ID, { accountTints: TINTS, accountLabel: 'left', accountLabelMinColumns: '999' } as never)
     expect(pickWithLabel(l, [1], () => true, () => 1).strip).toBe(true)
   })
+})
+
+describe('stored tints', () => {
+  const stored = { [ID]: { label: 'HOME', color: '#16a34a', solid: '#12883c', side: 'right' as const } }
+  test('the option wins over the stored entry and takes its side from accountLabel', () => {
+    const l = lookOf(ID, { accountTints: TINTS, accountLabel: 'left' }, stored)
+    expect(l.account?.label).toBe('WORK')
+    expect(l.labelSide).toBe('left')
+    expect(lookOf(ID, { accountTints: TINTS }, stored).labelSide).toBe('off')
+  })
+  test('a stored entry is used when the option lacks the id; its side shows unless accountLabel is left or right', () => {
+    const other = { accountTints: 'ffffffff-0000-0000-0000-000000000000=X:#3b82f6' }
+    expect(lookOf(ID, other, stored)).toMatchObject({ account: { label: 'HOME' }, labelSide: 'right' })
+    expect(lookOf(ID, { ...other, accountLabel: 'off' }, stored).labelSide).toBe('right')
+    expect(lookOf(ID, { ...other, accountLabel: 'left' }, stored).labelSide).toBe('left')
+    expect(lookOf(undefined, {}, stored).account).toBeUndefined()
+    expect(lookOf('ffffffff-0000-0000-0000-000000000000', {}, stored).account).toBeUndefined()
+  })
+  test('colors: names, hex, bad input', () => {
+    expect(parseColor('Blue')).toBe('#2563eb')
+    expect(parseColor('#ABCDEF')).toBe('#abcdef')
+    expect(parseColor('#abc')).toBeUndefined()
+    expect(parseColor('toString')).toBeUndefined()
+  })
+  test('tint args: label, color, side, derived strip', () => {
+    expect(parseTintArgs('WORK blue')).toEqual({ label: 'WORK', color: '#2563eb', solid: mix('#2563eb', 80, '#000000'), side: 'right' })
+    expect(parseTintArgs('my work #16a34a left')?.label).toBe('my work')
+    expect(parseTintArgs('X teal off')?.side).toBe('off')
+    for (const bad of ['', 'WORK', 'WORK mauve', 'A:B red', 'A,B red', 'ABCDEFGHIJKLMNOPQ red', 'blue']) expect(parseTintArgs(bad)).toBeUndefined()
+  })
+})
+
+describe('/usage-band tint', () => {
+  const cmd = (id: string | undefined, options: Record<string, string>, steps: string[], check: (out: string[], s: string) => void) =>
+    test(`flow ${steps.join(' | ')}`, { options } as never, async ($, on) => {
+      on('session.usage', () => ({ value: { startedAt: NOW - 3_600_000, context: { tokens: 1000, window: 1_000_000, percent: 1 }, cost: { usd: 1 }, rateLimits: [] } }))
+      on('session.turns', () => ({ value: 5 }))
+      on('clock.now', () => ({ value: NOW }))
+      on('env.get', (_$, e) => ({ value: e.name === 'CLAUDE_CODE_ACCOUNT_UUID' ? id : undefined }))
+      const kept = new Map<string, unknown>()
+      on('store.get', (_$, e) => ({ value: kept.get(e.key) }))
+      on('store.set', (_$, e) => (kept.set(e.key, JSON.parse(JSON.stringify(e.value))), { value: undefined }))
+      const ui = await $.ui.mount({ plugin: 'usage-band', surface: 'desktop', ...BAND } as never)
+      const out: string[] = []
+      for (const args of steps) out.push(String((await $.command.run({ command: 'usage-band', args })).text))
+      check(out, JSON.stringify(await ui.drawn()))
+      await ui.unmount()
+    })
+  cmd(ID, {}, ['tint'], o => expect(o[0]).toContain('No tint set'))
+  cmd(ID, {}, ['tint WORK blue', 'tint'], (o, s) => {
+    expect(o[0]).toContain('Tint set')
+    expect(o[1]).toContain('WORK')
+    expect(s).toContain('rotate(90)') // the band redraws with the right-hand label, no restart
+    expect(s).toContain(mix('#2563eb'))
+  })
+  cmd(ID, {}, ['tint WORK blue', 'tint off', 'tint'], (o, s) => {
+    expect(o[1]).toContain('removed')
+    expect(o[2]).toContain('No tint set')
+    expect(s).not.toContain('rotate(')
+  })
+  cmd(ID, { accountTints: TINTS }, ['tint HOME green'], (o, s) => {
+    expect(o[0]).toContain('accountTints setting controls')
+    expect(s).not.toContain('HOME')
+  })
+  cmd(ID, {}, ['tint WORK mauve', 'tint ABCDEFGHIJKLMNOPQ red', 'bogus'], o => o.forEach(t => expect(t).toContain('/usage-band tint')))
+  cmd(undefined, {}, ['tint WORK blue'], o => expect(o[0]).toContain('no account id'))
 })
 
 for (const surface of ['terminal', 'desktop'] as const) {

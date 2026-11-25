@@ -15,16 +15,50 @@ export function parseTints(s: string | undefined): Map<string, Account> {
   return out
 }
 
-export function lookOf(id: string | undefined, o: { accountTints?: unknown; accountLabel?: unknown; accountLabelWhenWrapped?: unknown }): Look {
-  const side = o.accountLabel === 'left' || o.accountLabel === 'right' ? o.accountLabel : 'off'
+// What `/usage-band tint` keeps per account in the plugin store.
+export type StoredTint = { label: string; color: string; solid: string; side: Side }
+export type Tints = Record<string, StoredTint>
+
+const explicitSide = (v: unknown) => (v === 'left' || v === 'right' ? v : undefined)
+
+// The `accountTints` option wins over the stored entry. An option entry takes its side from `accountLabel`;
+// a stored entry from its own side, unless `accountLabel` is explicitly left or right.
+export function lookOf(id: string | undefined, o: { accountTints?: unknown; accountLabel?: unknown; accountLabelWhenWrapped?: unknown }, stored: Tints = {}): Look {
+  const opt = id ? parseTints(typeof o.accountTints === 'string' ? o.accountTints : '').get(id) : undefined
+  const kept = id && !opt && Object.hasOwn(stored, id) ? stored[id] : undefined
+  // The store is a file anyone can edit: a kept entry is drawn only if it still parses.
+  const mine = kept ? parseTintArgs(`${kept.label} ${kept.color} ${kept.side}`) : undefined
+  const labelSide: Side = opt ? (explicitSide(o.accountLabel) ?? 'off') : mine ? (explicitSide(o.accountLabel) ?? mine.side) : (explicitSide(o.accountLabel) ?? 'off')
   return {
-    account: id ? parseTints(typeof o.accountTints === 'string' ? o.accountTints : '').get(id) : undefined,
-    labelSide: side,
+    account: opt ?? (mine && { label: mine.label, color: mine.color, solid: mine.solid }),
+    labelSide,
     whenWrapped: o.accountLabelWhenWrapped === 'show',
   }
 }
 
-// One rule for both surfaces: the strip shows only on the widest layout (index 0), unless whenWrapped.
+export const PALETTE: Record<string, string> = {
+  blue: '#2563eb', green: '#16a34a', orange: '#ea580c', red: '#dc2626', purple: '#9333ea',
+  pink: '#db2777', teal: '#0d9488', yellow: '#ca8a04', gray: '#6b7280',
+}
+export const parseColor = (s: string): string | undefined => {
+  const t = s.trim().toLowerCase()
+  return Object.hasOwn(PALETTE, t) ? PALETTE[t] : /^#[0-9a-f]{6}$/.test(t) ? t : undefined
+}
+
+export const TINT_USAGE = '/usage-band tint <LABEL> <color> [left|right|off] | /usage-band tint off | /usage-band tint. Colors: ' + Object.keys(PALETTE).join(', ') + ' or #rrggbb.'
+
+// `<LABEL> <color> [side]` (the words after `tint`); undefined when it does not parse.
+export function parseTintArgs(rest: string): StoredTint | undefined {
+  const w = rest.trim().split(/\s+/).filter(Boolean)
+  const last = w.at(-1)
+  const side: Side = last === 'left' || last === 'right' || last === 'off' ? (w.pop() as Side) : 'right'
+  const color = parseColor(w.pop() ?? '')
+  const label = w.join(' ')
+  if (!color || !label || label.length > 16 || /[:,\x00-\x1f]/.test(label)) return undefined
+  return { label, color, solid: mix(color, 80, '#000000'), side }
+}
+
+// One rule for both surfaces.
 // `fits(grid, strip)` says whether a layout fits with or without the strip's room; `all` is roomiest first.
 // The label stays while the band keeps the row count of its widest layout; `rows` counts a layout's rows.
 export function pickWithLabel<G>(l: Look, all: G[], fits: (g: G, strip: boolean) => boolean, rows: (g: G) => number): { grid: G; strip: boolean } {

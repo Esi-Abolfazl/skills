@@ -121,11 +121,26 @@ Claude Code plugins that change Claude's own interface. This repo is their marke
 |---|---|
 | [usage-band](mods/usage-band) | Replaces the band above the prompt with pill cards: 5-hour and 7-day limits (bar, clock tick, reset time, pace warning; polled from the account every minute, so other sessions and claude.ai show up; if polling fails, the engine's reading, else the last one seen, faded), tokens in and out with cache rate, context against the compaction window with the compaction count, agent time, cost, and the last test run. Fills the slot's width: two lines when they fit, four when narrow. Clicking a card opens a details pane of collapsible cards (context breakdown with its bar and auto-compact line, limits, tokens, cost, models, turns, tests; the models card lists every model used in any session on the machine, subagents included, with tokens, sessions, share and an estimated API-rate cost, filtered by Day, Week, Month or All and by Everything, Main or Subagents; its ledger keeps history after Claude Code deletes old transcripts) with that card's section open, and its bottom line names the running version; `/usage-band` opens it too. Draws in the desktop app and the terminal. Optional account tint and edge label (see below). |
 
-**usage-band account tint.** Three options (set them in the plugin's config menu) tell your accounts apart:
+**usage-band account tint.** Tell your accounts apart by tinting and labeling each window's band.
+
+The easy way is the command. Run it once in each window; the mod binds the tint to that window's account, so you never look up an account id:
+
+```
+/usage-band tint WORK blue
+/usage-band tint HOME green left
+```
+
+- `/usage-band tint <LABEL> <color> [left|right|off]`: LABEL is free text up to 16 characters, without `:` or `,`. The color is `#rrggbb` or one of blue, green, orange, red, purple, pink, teal, yellow, gray. The label strip gets a darker shade of the color. The side defaults to `right`.
+- `/usage-band tint off` removes this window's tint. `/usage-band tint` shows the current one.
+- It is saved in the plugin store and survives restarts. `/usage-band` with no arguments still opens the details pane.
+
+The advanced way is three options, set in the plugin's config menu (useful if you sync settings):
 
 - `accountTints`: comma-separated `accountId=LABEL:#wash[:#solid]` entries. The band gets a rounded panel washed with #wash at 14% into the panel color. The wash is mixed for the dark theme: in the light theme the band shows a dark panel. The label strip uses #solid when given, else #wash. Default empty (no tint).
 - `accountLabel`: `off` (default), `left` or `right`. Draws the label as a colored edge strip.
 - `accountLabelWhenWrapped`: `hide` (default) or `show`. With `hide`, the label shows while the band fits in 2 rows; when the label would push the band to 4 rows, it drops and the band uses the full width. `show` keeps it.
+
+Precedence: an `accountTints` entry for the window's account wins over the command's tint, and the command then says the setting controls this window. With an option entry, the label side comes from `accountLabel`. With a command tint, the side comes from the command, unless `accountLabel` is set to `left` or `right`, which wins. `accountLabelWhenWrapped` applies to both.
 
 Examples: `00000000-0000-0000-0000-000000000000=WORK:#3b82f6` (strip in the wash color) and `00000000-0000-0000-0000-000000000000=WORK:#3b82f6:#2563eb` (strip in a separate solid color). The account id is `CLAUDE_CODE_ACCOUNT_UUID`, which the desktop app sets per session. An account with no entry gets the plain band. The label needs the desktop or mobile app for vertical text; the terminal shows a plain colored edge.
 
