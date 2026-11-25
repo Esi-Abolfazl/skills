@@ -232,7 +232,7 @@ End with two sections:
 - **Landed**: one line per meaningful change, the review verdict, the gate results, the commits made or the message draft, the merge (step 7b) when `m` ran, the PR result (step 8b) when `pr` ran: URL and shipped SHA, or "not shipped" with what it waits on, and which Ship settings were assumed, under Needs you.
 - **Needs you**: anything only the user can decide or do (migrations, env vars, manual settings, debt follow-ups from step 3). "Nothing" is a valid answer.
 
-End every wrap with this help block:
+Show this help block at the end of the first wrap in a session. Later wraps in the same session end without it.
 
 ```
 /wrap            sweep · review · docs · gates · regroup unpushed if messy · draft only
