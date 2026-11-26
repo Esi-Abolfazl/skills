@@ -113,7 +113,7 @@ describe('models card in the pane', () => {
 })
 
 describe('scan timing', () => {
-  test('a turn ends while the models scan is still running', async ($, on) => {
+  test('the models scan runs from a timer, not inside the turn', async ($, on) => {
     const o = on as unknown as (ev: string, fn: (...a: never[]) => unknown) => void
     const clock = mock.clock(on as never, { now: NOW })
     let scanStarted = false

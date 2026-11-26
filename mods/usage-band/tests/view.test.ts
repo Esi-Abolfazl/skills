@@ -106,16 +106,12 @@ describe('layout choice', () => {
 })
 
 describe('testrun', () => {
-  test('knows test runners and nothing else', () => {
+  test('test runners, summary counts and source edits', () => {
     for (const c of ['pnpm test', 'pnpm run test:unit', 'uv run pytest -q', 'cd x && vitest run', 'claude plugin test ./m', 'go test ./...']) expect(isTestCommand(c)).toBe(true)
     for (const c of ['ls tests', 'cat test.txt', 'git commit -m "add test"', 'pnpm build']) expect(isTestCommand(c)).toBe(false)
-  })
-  test('reads the summary counts; a failed count fails the run', () => {
     expect(testOutcome(false, ' 12 pass\n 0 fail\n')).toEqual({ state: 'pass', passed: 12, failed: 0 })
     expect(testOutcome(false, 'Tests: 2 failed, 10 passed')).toEqual({ state: 'fail', passed: 10, failed: 2 })
     expect(testOutcome(true, 'boom').state).toBe('fail')
-  })
-  test('only source edits stale a run', () => {
     expect(isCode('/a/b.tsx')).toBe(true)
     expect(isCode('/a/README.md')).toBe(false)
   })

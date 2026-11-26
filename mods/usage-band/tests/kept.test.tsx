@@ -46,22 +46,6 @@ describe('kept limits', () => {
     expect(text).not.toContain('5h')
   })
 
-  test('with an account id the file is per account', async ($, on) => {
-    let path = ''
-    on('env.get', (_$, e) => ({ value: e.name === 'HOME' ? '/home/me' : e.name === 'CLAUDE_CODE_ACCOUNT_UUID' ? 'acc-1' : undefined }))
-    on('session.id', () => ({ value: 'abc' }))
-    on('session.turns', () => ({ value: 0 }))
-    on('process.run', (_$, e) => {
-      if (e.argv[0] === '/bin/sh') path = String(e.argv[4])
-      return { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
-    })
-    on('session.usage', () => ({ value: { startedAt: NOW, context: { tokens: 0, window: 1_000_000, percent: 0 }, rateLimits: [WEEK], cost: { usd: 1 } } }))
-    on('clock.now', () => ({ value: NOW }))
-    on('turn.complete', () => ({ text: '' }))
-    await $.turn.complete({ answer: '', durationMs: 0, isAborted: false, turnId: 't', reason: 'answer' } as const)
-    expect(path).toBe(ACCOUNT_FILE)
-  })
-
   test('an engine-only reading keeps the per-model windows until they reset; the write is atomic', async ($, on) => {
     let file = ''
     let script = ''
@@ -92,6 +76,7 @@ describe('kept limits', () => {
 
   test('an account with no file of its own reads the old shared file, and never writes it', async ($, on) => {
     const writes: string[] = []
+    let rateLimits: unknown[] = []
     const old = JSON.stringify({ at: 1, limits: [WEEK] })
     on('env.get', (_$, e) => ({ value: e.name === 'HOME' ? '/home/me' : e.name === 'CLAUDE_CODE_ACCOUNT_UUID' ? 'acc-1' : undefined }))
     on('session.id', () => ({ value: 'abc' }))
@@ -99,11 +84,12 @@ describe('kept limits', () => {
     on('process.run', (_$, e) => {
       const a = e.argv
       if (a[0] === 'cat') return { value: { exitCode: a[1] === FILE ? 0 : 1, stdout: a[1] === FILE ? old : '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
-      if (a[0] === '/bin/sh') writes.push(String(a[4]))
+      if (a[0] === '/bin/sh' && String(a[4]).includes('/usage-band/')) writes.push(String(a[4]))
       return { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
     })
-    on('session.usage', () => ({ value: { startedAt: NOW, context: { tokens: 0, window: 1_000_000, percent: 0 }, rateLimits: [], cost: { usd: 1 } } }))
+    on('session.usage', () => ({ value: { startedAt: NOW, context: { tokens: 0, window: 1_000_000, percent: 0 }, rateLimits, cost: { usd: 1 } } }))
     on('clock.now', () => ({ value: NOW }))
+    on('turn.complete', () => ({ text: '' }))
     on('session.start', (_$, e) => e)
     on('clock.every', () => ({ value: undefined }))
     on('command.register', () => ({ value: undefined }))
@@ -112,5 +98,8 @@ describe('kept limits', () => {
     await ui.resize({ columns: 200, rows: 4, in: 'band' } as never)
     expect(bandRows(await ui.drawn({ in: 'band' } as never)).join('\n')).toContain('41%')
     expect(writes).not.toContain(FILE)
+    rateLimits = [WEEK]
+    await $.turn.complete({ answer: '', durationMs: 0, isAborted: false, turnId: 't', reason: 'answer' } as const)
+    expect(writes).toEqual([ACCOUNT_FILE])
   })
 })

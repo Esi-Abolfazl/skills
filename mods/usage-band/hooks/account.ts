@@ -1,4 +1,4 @@
-// Account tint and edge label: pure parts shared by the hooks module and the Client module.
+// Account frame and edge label: pure parts shared by the hooks module and the Client module.
 export type Account = { label: string; color: string; solid?: string }
 export type Side = 'off' | 'left' | 'right'
 export type Look = { account?: Account; labelSide: Side; whenWrapped: boolean }
@@ -15,7 +15,7 @@ export function parseTints(s: string | undefined): Map<string, Account> {
   return out
 }
 
-// What `/usage-band tint` keeps per account in the plugin store.
+// What `/usage-band frame` keeps per account in the plugin store.
 export type StoredTint = { label: string; color: string; solid: string; side: Side }
 export type Tints = Record<string, StoredTint>
 
@@ -27,7 +27,7 @@ export function lookOf(id: string | undefined, o: { accountTints?: unknown; acco
   const opt = id ? parseTints(typeof o.accountTints === 'string' ? o.accountTints : '').get(id) : undefined
   const kept = id && !opt && Object.hasOwn(stored, id) ? stored[id] : undefined
   // The store is a file anyone can edit: a kept entry is drawn only if it still parses.
-  const mine = kept ? parseTintArgs(`${kept.label} ${kept.color} ${kept.side}`) : undefined
+  const mine = kept ? parseTintArgs(`${kept.color} ${kept.label} ${kept.side}`) : undefined
   const labelSide: Side = opt ? (explicitSide(o.accountLabel) ?? 'off') : mine ? (explicitSide(o.accountLabel) ?? mine.side) : (explicitSide(o.accountLabel) ?? 'off')
   return {
     account: opt ?? (mine && { label: mine.label, color: mine.color, solid: mine.solid }),
@@ -45,14 +45,15 @@ export const parseColor = (s: string): string | undefined => {
   return Object.hasOwn(PALETTE, t) ? PALETTE[t] : /^#[0-9a-f]{6}$/.test(t) ? t : undefined
 }
 
-export const TINT_USAGE = '/usage-band tint <LABEL> <color> [left|right|off] | /usage-band tint off | /usage-band tint. Colors: ' + Object.keys(PALETTE).join(', ') + ' or #rrggbb.'
+export const TINT_USAGE = '/usage-band frame <color> <LABEL> [right|r|left|l|off] | /usage-band frame off | /usage-band frame. Colors: ' + Object.keys(PALETTE).join(', ') + ' or #rrggbb.'
 
-// `<LABEL> <color> [side]` (the words after `tint`); undefined when it does not parse.
+const SIDES: Record<string, Side> = { left: 'left', l: 'left', right: 'right', r: 'right', off: 'off' }
+
+// `<color> <LABEL> [side]` (the words after `frame`); undefined when it does not parse.
 export function parseTintArgs(rest: string): StoredTint | undefined {
   const w = rest.trim().split(/\s+/).filter(Boolean)
-  const last = w.at(-1)
-  const side: Side = last === 'left' || last === 'right' || last === 'off' ? (w.pop() as Side) : 'right'
-  const color = parseColor(w.pop() ?? '')
+  const side: Side = SIDES[w.at(-1)?.toLowerCase() ?? ''] ? SIDES[w.pop()!.toLowerCase()]! : 'right'
+  const color = parseColor(w.shift() ?? '')
   const label = w.join(' ')
   if (!color || !label || label.length > 16 || /[:,\x00-\x1f]/.test(label)) return undefined
   return { label, color, solid: mix(color, 80, '#000000'), side }
@@ -88,7 +89,7 @@ export const CELL_W = 9
 export const CELL_H = 20
 export const STRIP_PX = 18
 export const PANEL_R = 12
-export const PANEL_PAD = 3
+export const PANEL_PAD = 2 // the border's width: the cards sit right against it, and right against the strip
 export const SLOT_UNDER = 37 // panel width = slotPx + this leaves the host's own padding on both sides; measured against the desktop app
 
 const esc = (t: string) => t.replace(/[<>&"]/g, c => `&#${c.charCodeAt(0)};`)
@@ -110,16 +111,17 @@ function strip(a: Account, side: 'left' | 'right', x: number, h: number): string
 export const stripSvg = (a: Account, side: 'left' | 'right', height: number) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="${STRIP_PX}" height="${height}" viewBox="0 0 ${STRIP_PX} ${height}">${strip(a, side, 0, height)}</svg>`
 
-// The desktop panel: rounded wash, optional strip, and the pills drawing (`inner`) inside the padding.
+// The desktop panel: a border in the strip's color (the strip reads as its thick side), optional strip, and the pills drawing (`inner`) inside the padding.
 export function panelSvg(a: Account, side: Side, inner: { source: string; width: number; height: number }) {
-  const s = side === 'off' ? 0 : STRIP_PX
+  // The strip replaces the border on its side, so that side has no padding.
+  const s = side === 'off' ? 0 : STRIP_PX - PANEL_PAD
   const width = s + 2 * PANEL_PAD + inner.width
   const height = inner.height + 2 * PANEL_PAD
-  const px = (side === 'left' ? s : 0) + PANEL_PAD
+  const px = side === 'left' ? STRIP_PX : PANEL_PAD
   const source =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +
-    `<rect width="${width}" height="${height}" rx="${PANEL_R}" fill="${washOf(a)}"/>` +
     (side === 'off' ? '' : strip(a, side, side === 'left' ? 0 : width - STRIP_PX, height)) +
+    `<rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="${PANEL_R - 1}" fill="none" stroke="${stripColor(a)}" stroke-width="2"/>` +
     `<svg x="${px}" y="${PANEL_PAD}" width="${inner.width}" height="${inner.height}">${inner.source}</svg></svg>`
   return { source, width, height, x: px, y: PANEL_PAD }
 }

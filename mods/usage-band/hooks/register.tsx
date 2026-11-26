@@ -330,7 +330,7 @@ export const register: Register = (on, options) => {
       await openDetails($)
       return { text: 'Usage details opened.' }
     }
-    if (verb !== 'tint') return { text: TINT_USAGE }
+    if (verb !== 'frame') return { text: TINT_USAGE }
     const id = await $.env.get('CLAUDE_CODE_ACCOUNT_UUID').catch(() => undefined)
     if (!id) return { text: `This window has no account id. ${TINT_USAGE}` }
     // Fresh from the store: another window may have tinted its own account since this session loaded.
@@ -339,8 +339,8 @@ export const register: Register = (on, options) => {
     const word = rest.join(' ')
     const managed = parseTints(typeof options?.accountTints === 'string' ? options.accountTints : '').has(id)
     if (word === '') {
-      if (managed) return { text: 'The accountTints setting controls the tint of this window. ' + TINT_USAGE }
-      return { text: (mine ? `Tint: ${mine.label}, ${mine.color}, label ${mine.side}.` : 'No tint set.') + ' ' + TINT_USAGE }
+      if (managed) return { text: 'The accountTints setting controls the frame of this window. ' + TINT_USAGE }
+      return { text: (mine ? `Frame: ${mine.color} ${mine.label}, label ${mine.side}.` : 'No frame set.') + ' ' + TINT_USAGE }
     }
     const next = { ...tints }
     if (word.toLowerCase() === 'off') delete next[id]
@@ -351,7 +351,7 @@ export const register: Register = (on, options) => {
     }
     await $.store.set('tints', next)
     await update($, tintsAtom, () => ({ loaded: true, tints: next }))
-    const done = word.toLowerCase() === 'off' ? 'Tint removed.' : `Tint set: ${next[id]!.label}.`
+    const done = word.toLowerCase() === 'off' ? 'Frame removed.' : `Frame set: ${next[id]!.label}.`
     return { text: managed ? `${done} The accountTints setting controls this window, so the change will not show.` : done }
   })
 
@@ -447,7 +447,7 @@ export const register: Register = (on, options) => {
     const look = lookOf(await $.env.get('CLAUDE_CODE_ACCOUNT_UUID').catch(() => undefined), opts, await loadTints($))
     // The panel is drawn larger by the host's padding and pulled out by one cell (Space is cells, not px;
     // shortcut: the desktop may ignore negative vertical margins, unverified).
-    const room = (cols: number, strip: boolean) => slotPx(cols) + SLOT_UNDER - 2 * PANEL_PAD - (strip ? STRIP_PX : 0)
+    const room = (cols: number, strip: boolean) => slotPx(cols) + SLOT_UNDER - 2 * PANEL_PAD - (strip ? STRIP_PX - PANEL_PAD : 0)
 
     // The terminal: chips in its monospace cells, laid out to the region's real width; they take clicks.
     if (e.surface === 'terminal' && 'Client' in table && !down.has(e.surface)) {
@@ -463,7 +463,7 @@ export const register: Register = (on, options) => {
       const fitAt = (strip: boolean) => (look.account ? room(e.props.bodyColumns, strip) : slotPx(e.props.bodyColumns))
       const { grid: grids, strip } = pickWithLabel(look, layouts(v), (g, st) => bandWidth(...g) <= fitAt(st), g => g.length)
       const slot = fitAt(strip)
-      // The wash panel is drawn inside the SVG, so its rounded corners and the strip clip exactly.
+      // The bordered panel is drawn inside the SVG, so its rounded corners and the strip clip exactly.
       const side = strip ? look.labelSide : 'off'
       const svg = bandSvg(grids, slot)
       const panel = look.account ? panelSvg(look.account, side, svg) : undefined

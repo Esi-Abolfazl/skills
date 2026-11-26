@@ -119,24 +119,24 @@ Claude Code plugins that change Claude's own interface. This repo is their marke
 
 | Mod | What it does |
 |---|---|
-| [usage-band](mods/usage-band) | Replaces the band above the prompt with pill cards: 5-hour and 7-day limits (bar, clock tick, reset time, pace warning; polled from the account every minute, so other sessions and claude.ai show up; if polling fails, the engine's reading, else the last one seen, faded), tokens in and out with cache rate, context against the compaction window with the compaction count, agent time, cost, and the last test run. Fills the slot's width: two lines when they fit, four when narrow. Clicking a card opens a details pane of collapsible cards (context breakdown with its bar and auto-compact line, limits with any per-model weekly limit such as Fable and its share of the 7-day limit (pane only, never on the band), tokens, cost, models, turns, tests; the models card lists every model used in any session on the machine, subagents included, with tokens, sessions, share and an estimated API-rate cost, filtered by Day, Week, Month or All and by Everything, Main or Subagents; its ledger keeps history after Claude Code deletes old transcripts) with that card's section open, and its bottom line names the running version; `/usage-band` opens it too. Draws in the desktop app and the terminal. The last limits and the plan name are kept per account in `~/.claude/usage-band/limits/<account uuid>.json`, so other tools (a launcher) can read them. Optional account tint and edge label (see below). |
+| [usage-band](mods/usage-band) | Replaces the band above the prompt with pill cards: 5-hour and 7-day limits (bar, clock tick, reset time, pace warning; polled from the account every minute, so other sessions and claude.ai show up; if polling fails, the engine's reading, else the last one seen, faded), tokens in and out with cache rate, context against the compaction window with the compaction count, agent time, cost, and the last test run. Fills the slot's width: two lines when they fit, four when narrow. Clicking a card opens a details pane of collapsible cards (context breakdown with its bar and auto-compact line, limits with any per-model weekly limit such as Fable and its share of the 7-day limit (pane only, never on the band), tokens, cost, models, turns, tests; the models card lists every model used in any session on the machine, subagents included, with tokens, sessions, share and an estimated API-rate cost, filtered by Day, Week, Month or All and by Everything, Main or Subagents; its ledger keeps history after Claude Code deletes old transcripts) with that card's section open, and its bottom line names the running version; `/usage-band` opens it too. Draws in the desktop app and the terminal. The last limits and the plan name are kept per account in `~/.claude/usage-band/limits/<account uuid>.json`, so other tools (a launcher) can read them. Optional account frame and edge label (see below). |
 
-**usage-band account tint.** Tell your accounts apart by tinting and labeling each window's band.
+**usage-band account frame.** Tell your accounts apart by framing and labeling each window's band.
 
-The easy way is the command. Run it once in each window; the mod binds the tint to that window's account, so you never look up an account id:
+The easy way is the command. Run it once in each window; the mod binds the frame to that window's account, so you never look up an account id:
 
 ```
-/usage-band tint WORK blue
-/usage-band tint HOME green left
+/usage-band frame blue WORK
+/usage-band frame green HOME l
 ```
 
-- `/usage-band tint <LABEL> <color> [left|right|off]`: LABEL is free text up to 16 characters, without `:` or `,`. The color is `#rrggbb` or one of blue, green, orange, red, purple, pink, teal, yellow, gray. The label strip gets a darker shade of the color. The side defaults to `right`.
-- `/usage-band tint off` removes this window's tint. `/usage-band tint` shows the current one.
+- `/usage-band frame <color> <LABEL> [right|r|left|l|off]`: the band gets a border in the strip's color, and the strip joins it as its thick side. LABEL is free text up to 16 characters, without `:` or `,`. The color is `#rrggbb` or one of blue, green, orange, red, purple, pink, teal, yellow, gray. The label strip gets a darker shade of the color. The side defaults to `right`; with `off` (or when a narrow window hides the label) only the border shows.
+- `/usage-band frame off` removes this window's frame. `/usage-band frame` shows the current one.
 - It is saved in the plugin store and survives restarts. `/usage-band` with no arguments still opens the details pane.
 
 The advanced way is three options, set in the plugin's config menu (useful if you sync settings):
 
-- `accountTints`: comma-separated `accountId=LABEL:#wash[:#solid]` entries. The band gets a rounded panel washed with #wash at 14% into the panel color. The wash is mixed for the dark theme: in the light theme the band shows a dark panel. The label strip uses #solid when given, else #wash. Default empty (no tint).
+- `accountTints`: comma-separated `accountId=LABEL:#wash[:#solid]` entries. On the desktop the band gets a border in #solid when given, else #wash; the terminal band gets a panel washed with #wash at 14% into the panel color. The label strip uses the same color as the border. Default empty (no frame).
 - `accountLabel`: `off` (default), `left` or `right`. Draws the label as a colored edge strip.
 - `accountLabelWhenWrapped`: `hide` (default) or `show`. With `hide`, the label shows while the band fits in 2 rows; when the label would push the band to 4 rows, it drops and the band uses the full width. `show` keeps it.
 

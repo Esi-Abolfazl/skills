@@ -5,6 +5,7 @@ import { parseScan } from '../hooks/scan'
 describe('scan', () => {
   test('sums turn spans, logs each turn, reads token and compaction totals', () => {
     const out = 'T 2026-10-16T08:50:00.000Z 2026-10-16T08:55:00.000Z 1000\nT 2026-10-16T09:00:00.000Z 2026-10-16T09:00:30.000Z 3000\nU 1 2 3 4\nC 5\n'
+    expect(parseScan('').turns).toBe(0)
     expect(parseScan(out)).toEqual({
       agentMs: 330_000,
       turns: 2,
@@ -29,8 +30,5 @@ describe('scan', () => {
     const scan = parseScan(out)
     expect(scan.sinceCompact).toBe(1)
     expect(scan.turns).toBe(2)
-  })
-  test('empty output is an empty scan', () => {
-    expect(parseScan('').turns).toBe(0)
   })
 })

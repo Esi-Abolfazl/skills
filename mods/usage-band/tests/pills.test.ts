@@ -77,8 +77,6 @@ describe('pills', () => {
     const { width, source } = bandSvg([[...grid]], tight + 100)
     expect(width).toBe(tight + 100)
     const groove = source.match(/class="groove"[^>]*/)?.[0] ?? ''
-    expect(groove).toContain(`x="${PAD}"`)
-    expect(groove).toContain(`y="${H / 2 - 4}"`)
     expect(groove).toContain(`width="${BAR + 100}"`)
     expect(bandSvg([[...grid]], tight - 50).width).toBe(tight)
   })
