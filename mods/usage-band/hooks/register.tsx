@@ -6,7 +6,7 @@ import { bandSvg, bandText, bandWidth, fmtSpan, fmtTokens, meterColor, slotPx } 
 import { NO_SCAN, SCAN_AWK, SCAN_SH, parseScan } from './scan'
 import { isCode, isTestCommand, testOutcome } from './testrun'
 import { ACCENT } from './cells'
-import { PANEL_PAD, SLOT_UNDER, STRIP_PX, FRAME_USAGE, lookOf, panelSvg, parseFrameArgs, parseFrames, pickWithLabel } from './account'
+import { PANEL_PAD, SLOT_UNDER, STRIP_PX, FRAME_USAGE, lookOf, panelSvg, parseFrameArgs, parseFrameFile, pickWithLabel } from './account'
 import type { Frames } from './account'
 import { VERSION } from './version'
 import { MODELS_AWK, MODELS_QUERY_AWK, MODELS_SESSION_AWK, MODELS_SH, PERIODS, SOURCES, parseQuery, windowStarts } from './models'
@@ -24,11 +24,21 @@ const RETRY_MS = 30_000
 const EMPTY: Stats = { transcript: '', scan: NO_SCAN, turnCosts: [] }
 // Reading it in a render subscribes that draw, so a `set` redraws the band.
 const framesAtom = atom({ plugin: 'usage-band', key: 'frames' } as const, { loaded: false, frames: {} as Frames })
+const accountId = ($: EngineInterface) => $.env.get('CLAUDE_CODE_ACCOUNT_UUID').catch(() => undefined)
+// The account's frame file, shared with the Claude Accounts launcher: <config>/usage-band/frames/<uuid>.json.
+const frameFile = async ($: EngineInterface, id: string) => `${await configDir($)}/usage-band/frames/${id}.json`
 const storedFrames = async ($: EngineInterface): Promise<Frames> => {
-  const kept = await $.store.get('frames').catch(() => undefined)
-  return kept && typeof kept === 'object' ? (kept as Frames) : {}
+  const id = await accountId($)
+  const r = id ? await $.process.run(['cat', await frameFile($, id)]).catch(() => undefined) : undefined
+  const f = r?.exitCode === 0 ? parseFrameFile(r.stdout) : undefined
+  return id && f ? { [id]: f } : {}
 }
-// A render cannot write state, so before session.start has loaded the atom it reads the store itself.
+// Re-reads the file into the atom (a launcher edit shows on the next poll); redraws only on a change.
+const syncFrames = async ($: EngineInterface) => {
+  const frames = await storedFrames($)
+  await update($, framesAtom, a => (a.loaded && JSON.stringify(a.frames) === JSON.stringify(frames) ? a : { loaded: true, frames }))
+}
+// A render cannot write state, so before session.start has loaded the atom it reads the file itself.
 const loadFrames = async ($: EngineInterface): Promise<Frames> => {
   const a = await read($, framesAtom)
   return a.loaded ? a.frames : storedFrames($)
@@ -302,14 +312,13 @@ const clock = (ms: number) => {
 export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     // First, so a failure below never stops it. A Client that fails again is dropped again.
-    $.clock.every(POLL_MS, () => pollLimits($))
+    $.clock.every(POLL_MS, () => void Promise.all([pollLimits($), syncFrames($)]))
     $.clock.every(RETRY_MS, () => {
       if (down.size === 0) return
       down.clear()
       $.ui.invalidate('ui.render')
     })
-    const frames = await storedFrames($)
-    await update($, framesAtom, () => ({ loaded: true, frames }))
+    await syncFrames($)
     await $.command.register({ name: 'usage-band', description: 'Open the usage details pane (limits, context, tokens, turns, tests)' })
     // The cost so far is the baseline the next turn's own cost is measured from.
     const usd = (await $.session.usage().catch(() => undefined))?.cost?.usd
@@ -331,28 +340,25 @@ export const register: Register = (on, options) => {
       return { text: 'Usage details opened.' }
     }
     if (verb !== 'frame') return { text: FRAME_USAGE }
-    const id = await $.env.get('CLAUDE_CODE_ACCOUNT_UUID').catch(() => undefined)
+    const id = await accountId($)
     if (!id) return { text: `This window has no account id. ${FRAME_USAGE}` }
-    // Fresh from the store: another window may have framed its own account since this session loaded.
-    const frames = await storedFrames($)
-    const mine = frames[id]
+    // Fresh from the file: the launcher or another window may have changed it since the last poll.
+    const mine = (await storedFrames($))[id]
     const word = rest.join(' ')
-    const managed = parseFrames(typeof options?.accountFrames === 'string' ? options.accountFrames : '').has(id)
-    if (word === '') {
-      if (managed) return { text: 'The accountFrames setting controls the frame of this window. ' + FRAME_USAGE }
-      return { text: (mine ? `Frame: ${mine.color} ${mine.label}, label ${mine.side}.` : 'No frame set.') + ' ' + FRAME_USAGE }
-    }
-    const next = { ...frames }
-    if (word.toLowerCase() === 'off') delete next[id]
+    if (word === '') return { text: (mine ? `Frame: ${mine.color} ${mine.label}, label ${mine.side}.` : 'No frame set.') + ' ' + FRAME_USAGE }
+    const file = await frameFile($, id)
+    if (word.toLowerCase() === 'off') await $.process.run(['rm', '-f', file])
     else {
       const t = parseFrameArgs(word)
       if (!t) return { text: FRAME_USAGE }
-      next[id] = t
+      // A label-less frame keeps the label already in the file; only its strip goes off.
+      const label = t.label || mine?.label || ''
+      await $.process.run(['/bin/sh', '-c', 'mkdir -p "$(dirname "$1")" && printf %s "$2" > "$1.tmp" && mv "$1.tmp" "$1"', 'sh', file, JSON.stringify({ label, color: t.color, side: t.side, at: await $.clock.now() })])
     }
-    await $.store.set('frames', next)
-    await update($, framesAtom, () => ({ loaded: true, frames: next }))
-    const done = word.toLowerCase() === 'off' ? 'Frame removed.' : `Frame set: ${next[id]!.label}.`
-    return { text: managed ? `${done} The accountFrames setting controls this window, so the change will not show.` : done }
+    await syncFrames($)
+    if (word.toLowerCase() === 'off') return { text: 'Frame removed.' }
+    const now = (await storedFrames($))[id]
+    return { text: now ? `Frame set: ${now.color}${now.side === 'off' ? ', label off.' : ` ${now.label}`}` : 'Frame write failed.' }
   })
 
   on('session.compact', async ($, e, next) => {

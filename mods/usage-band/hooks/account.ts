@@ -15,23 +15,20 @@ export function parseFrames(s: string | undefined): Map<string, Account> {
   return out
 }
 
-// What `/usage-band frame` keeps per account in the plugin store.
+// What the account's frame file holds (<config>/usage-band/frames/<account uuid>.json, also edited by the Claude Accounts launcher).
 export type StoredFrame = { label: string; color: string; solid: string; side: Side }
 export type Frames = Record<string, StoredFrame>
 
 const explicitSide = (v: unknown) => (v === 'left' || v === 'right' ? v : undefined)
 
-// The `accountFrames` option wins over the stored entry. An option entry takes its side from `accountLabel`;
-// a stored entry from its own side, unless `accountLabel` is explicitly left or right.
+// The frame file wins over the `accountFrames` option, and its side over `accountLabel`; the option is only
+// the default for an account with no file. An option entry takes its side from `accountLabel`.
 export function lookOf(id: string | undefined, o: { accountFrames?: unknown; accountLabel?: unknown; accountLabelWhenWrapped?: unknown }, stored: Frames = {}): Look {
-  const opt = id ? parseFrames(typeof o.accountFrames === 'string' ? o.accountFrames : '').get(id) : undefined
-  const kept = id && !opt && Object.hasOwn(stored, id) ? stored[id] : undefined
-  // The store is a file anyone can edit: a kept entry is drawn only if it still parses.
-  const mine = kept ? parseFrameArgs(`${kept.color} ${kept.label} ${kept.side}`) : undefined
-  const labelSide: Side = opt ? (explicitSide(o.accountLabel) ?? 'off') : mine ? (explicitSide(o.accountLabel) ?? mine.side) : (explicitSide(o.accountLabel) ?? 'off')
+  const mine = id && Object.hasOwn(stored, id) ? stored[id] : undefined
+  const opt = id && !mine ? parseFrames(typeof o.accountFrames === 'string' ? o.accountFrames : '').get(id) : undefined
   return {
-    account: opt ?? (mine && { label: mine.label, color: mine.color, solid: mine.solid }),
-    labelSide,
+    account: mine ? { label: mine.label, color: mine.color, solid: mine.solid } : opt,
+    labelSide: mine ? mine.side : (explicitSide(o.accountLabel) ?? 'off'),
     whenWrapped: o.accountLabelWhenWrapped === 'show',
   }
 }
@@ -45,7 +42,7 @@ export const parseColor = (s: string): string | undefined => {
   return Object.hasOwn(PALETTE, t) ? PALETTE[t] : /^#[0-9a-f]{6}$/.test(t) ? t : undefined
 }
 
-export const FRAME_USAGE = '/usage-band frame <color> <LABEL> [right|r|left|l|off] | /usage-band frame off | /usage-band frame. Colors: ' + Object.keys(PALETTE).join(', ') + ' or #rrggbb.'
+export const FRAME_USAGE = '/usage-band frame <color> [LABEL] [right|r|left|l|off] | /usage-band frame off | /usage-band frame. Colors: ' + Object.keys(PALETTE).join(', ') + ' or #rrggbb.'
 
 const SIDES: Record<string, Side> = { left: 'left', l: 'left', right: 'right', r: 'right', off: 'off' }
 
@@ -55,8 +52,23 @@ export function parseFrameArgs(rest: string): StoredFrame | undefined {
   const side: Side = SIDES[w.at(-1)?.toLowerCase() ?? ''] ? SIDES[w.pop()!.toLowerCase()]! : 'right'
   const color = parseColor(w.shift() ?? '')
   const label = w.join(' ')
-  if (!color || !label || label.length > 16 || /[:,\x00-\x1f]/.test(label)) return undefined
-  return { label, color, solid: mix(color, 80, '#000000'), side }
+  if (!color || label.length > 16 || /[:,\x00-\x1f]/.test(label)) return undefined
+  // No label means a frame with no strip.
+  return { label, color, solid: mix(color, 80, '#000000'), side: label ? side : 'off' }
+}
+
+const labelOk = (l: string) => l.length <= 16 && !/[:,\x00-\x1f]/.test(l)
+// The frame file's text; undefined unless it is valid (anyone may edit the file).
+export function parseFrameFile(text: string): StoredFrame | undefined {
+  try {
+    const f = JSON.parse(text) as { label?: unknown; color?: unknown; side?: unknown } | null
+    const color = typeof f?.color === 'string' ? parseColor(f.color) : undefined
+    const side = f?.side === 'left' || f?.side === 'right' || f?.side === 'off' ? f.side : undefined
+    if (!color || !side || typeof f?.label !== 'string' || !labelOk(f.label)) return undefined
+    return { label: f.label, color, solid: mix(color, 80, '#000000'), side: f.label ? side : 'off' }
+  } catch {
+    return undefined
+  }
 }
 
 // One rule for both surfaces.

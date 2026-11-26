@@ -130,9 +130,10 @@ The easy way is the command. Run it once in each window; the mod binds the frame
 /usage-band frame green HOME l
 ```
 
-- `/usage-band frame <color> <LABEL> [right|r|left|l|off]`: the band gets a border in the strip's color, and the strip joins it as its thick side. LABEL is free text up to 16 characters, without `:` or `,`. The color is `#rrggbb` or one of blue, green, orange, red, purple, pink, teal, yellow, gray. The label strip gets a darker shade of the color. The side defaults to `right`; with `off` (or when a narrow window hides the label) only the border shows.
+- `/usage-band frame <color> [LABEL] [right|r|left|l|off]`: the band gets a border in the strip's color, and the strip joins it as its thick side. LABEL is free text up to 16 characters, without `:` or `,`. The color is `#rrggbb` or one of blue, green, orange, red, purple, pink, teal, yellow, gray. The label strip gets a darker shade of the color. The side defaults to `right`; with `off` (or when a narrow window hides the label) only the border shows. Without a LABEL the command sets the color, turns the strip off and keeps the label already saved.
 - `/usage-band frame off` removes this window's frame. `/usage-band frame` shows the current one.
-- It is saved in the plugin store and survives restarts. `/usage-band` with no arguments still opens the details pane.
+- The frame is one file per account, `~/.claude/usage-band/frames/<account uuid>.json` (under `$CLAUDE_CONFIG_DIR` when set): `{"label": "WORK", "color": "#2563eb", "side": "right", "at": 1760000000000}` with `side` `left`, `right` or `off`. Other tools (the Claude Accounts launcher) may edit it; the band re-reads it every minute and after each command. An invalid file is ignored. The label strip's shade is always derived from `color`.
+- It survives restarts. `/usage-band` with no arguments still opens the details pane.
 
 The advanced way is three options, set in the plugin's config menu (useful if you sync settings):
 
@@ -140,7 +141,7 @@ The advanced way is three options, set in the plugin's config menu (useful if yo
 - `accountLabel`: `off` (default), `left` or `right`. Draws the label as a colored edge strip.
 - `accountLabelWhenWrapped`: `hide` (default) or `show`. With `hide`, the label shows while the band fits in 2 rows; when the label would push the band to 4 rows, it drops and the band uses the full width. `show` keeps it.
 
-Precedence: an `accountFrames` entry for the window's account wins over the command's frame, and the command then says the setting controls this window. With an option entry, the label side comes from `accountLabel`. With a command frame, the side comes from the command, unless `accountLabel` is set to `left` or `right`, which wins. `accountLabelWhenWrapped` applies to both.
+Precedence: the account's frame file wins over the options, and its `side` wins over `accountLabel`. The options only set the default for an account with no file; an option entry takes its label side from `accountLabel`. `accountLabelWhenWrapped` applies to both.
 
 Examples: `00000000-0000-0000-0000-000000000000=WORK:#3b82f6` (strip in the base color) and `00000000-0000-0000-0000-000000000000=WORK:#3b82f6:#2563eb` (strip in a separate solid color). The account id is `CLAUDE_CODE_ACCOUNT_UUID`, which the desktop app sets per session. An account with no entry gets the plain band. The label needs the desktop or mobile app for vertical text; the terminal shows a plain colored edge.
 

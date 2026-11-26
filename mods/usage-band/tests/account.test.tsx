@@ -1,6 +1,6 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect, mock, test } from 'claude-code/testing'
 
-import { lookOf, mix, panelSvg, parseColor, parseFrameArgs, parseFrames, pickWithLabel } from '../hooks/account'
+import { lookOf, mix, panelSvg, parseColor, parseFrameArgs, parseFrameFile, parseFrames, pickWithLabel } from '../hooks/account'
 
 const ID = '00000000-0000-0000-0000-000000000000'
 const FRAMES = `${ID}=WORK:#3b82f6:#2563eb`
@@ -55,19 +55,24 @@ describe('parseFrames', () => {
 
 describe('stored frames', () => {
   const stored = { [ID]: { label: 'HOME', color: '#16a34a', solid: '#12883c', side: 'right' as const } }
-  test('the option wins over the stored entry and takes its side from accountLabel', () => {
+  test('the frame file wins over the option, and its side over accountLabel', () => {
     const l = lookOf(ID, { accountFrames: FRAMES, accountLabel: 'left' }, stored)
-    expect(l.account?.label).toBe('WORK')
-    expect(l.labelSide).toBe('left')
-    expect(lookOf(ID, { accountFrames: FRAMES }, stored).labelSide).toBe('off')
+    expect(l).toMatchObject({ account: { label: 'HOME' }, labelSide: 'right' })
+    expect(lookOf(ID, { accountFrames: FRAMES, accountLabel: 'left' }, { [ID]: { ...stored[ID]!, side: 'off' } }).labelSide).toBe('off')
   })
-  test('a stored entry is used when the option lacks the id; its side shows unless accountLabel is left or right', () => {
-    const other = { accountFrames: 'ffffffff-0000-0000-0000-000000000000=X:#3b82f6' }
-    expect(lookOf(ID, other, stored)).toMatchObject({ account: { label: 'HOME' }, labelSide: 'right' })
-    expect(lookOf(ID, { ...other, accountLabel: 'off' }, stored).labelSide).toBe('right')
-    expect(lookOf(ID, { ...other, accountLabel: 'left' }, stored).labelSide).toBe('left')
+  test('the option is only the default for an account with no file', () => {
+    const other = 'ffffffff-0000-0000-0000-000000000000'
+    expect(lookOf(ID, { accountFrames: FRAMES, accountLabel: 'left' })).toMatchObject({ account: { label: 'WORK' }, labelSide: 'left' })
+    expect(lookOf(ID, { accountFrames: FRAMES }).labelSide).toBe('off')
     expect(lookOf(undefined, {}, stored).account).toBeUndefined()
-    expect(lookOf('ffffffff-0000-0000-0000-000000000000', {}, stored).account).toBeUndefined()
+    expect(lookOf(other, {}, stored).account).toBeUndefined()
+  })
+  test('frame file: valid, label-less, invalid', () => {
+    const f = (o: object) => parseFrameFile(JSON.stringify(o))
+    expect(f({ label: 'HOME', color: '#16A34A', side: 'left', at: 1 })).toEqual({ label: 'HOME', color: '#16a34a', solid: mix('#16a34a', 80, '#000000'), side: 'left' })
+    expect(f({ label: '', color: '#16a34a', side: 'right' })?.side).toBe('off')
+    for (const bad of [{ label: 'A:B', color: '#16a34a', side: 'left' }, { label: 'X', color: 'mauve', side: 'left' }, { label: 'X', color: '#16a34a', side: 'up' }, { label: 5, color: '#16a34a', side: 'left' }, null]) expect(f(bad as never)).toBeUndefined()
+    expect(parseFrameFile('not json')).toBeUndefined()
   })
   test('frame args: color, label, side, derived strip', () => {
     expect(parseColor('#ABCDEF')).toBe('#abcdef')
@@ -76,44 +81,80 @@ describe('stored frames', () => {
     expect(parseFrameArgs('blue WORK')).toEqual({ label: 'WORK', color: '#2563eb', solid: mix('#2563eb', 80, '#000000'), side: 'right' })
     expect(parseFrameArgs('#16a34a my work l')).toMatchObject({ label: 'my work', side: 'left' })
     expect(parseFrameArgs('blue WORK r')?.side).toBe('right')
+    expect(parseFrameArgs('orange')).toMatchObject({ label: '', side: 'off' }) // no label: border only
+    expect(parseFrameArgs('orange l')?.side).toBe('off')
     expect(parseFrameArgs('teal X off')?.side).toBe('off')
-    for (const bad of ['', 'WORK', 'WORK mauve', 'A:B red', 'A,B red', 'ABCDEFGHIJKLMNOPQ red', 'blue', 'WORK blue']) expect(parseFrameArgs(bad)).toBeUndefined()
+    for (const bad of ['', 'WORK', 'WORK mauve', 'A:B red', 'A,B red', 'ABCDEFGHIJKLMNOPQ red', 'WORK blue']) expect(parseFrameArgs(bad)).toBeUndefined()
   })
 })
 
 describe('/usage-band frame', () => {
-  const cmd = (id: string | undefined, options: Record<string, string>, steps: string[], check: (out: string[], s: string) => void) =>
-    test(`flow ${steps.join(' | ')}`, { options } as never, async ($, on) => {
-      on('session.usage', () => ({ value: { startedAt: NOW - 3_600_000, context: { tokens: 1000, window: 1_000_000, percent: 1 }, cost: { usd: 1 }, rateLimits: [] } }))
-      on('session.turns', () => ({ value: 5 }))
-      on('clock.now', () => ({ value: NOW }))
-      on('env.get', (_$, e) => ({ value: e.name === 'CLAUDE_CODE_ACCOUNT_UUID' ? id : undefined }))
-      const kept = new Map<string, unknown>()
-      on('store.get', (_$, e) => ({ value: kept.get(e.key) }))
-      on('store.set', (_$, e) => (kept.set(e.key, JSON.parse(JSON.stringify(e.value))), { value: undefined }))
+  const FILE = `/home/me/.claude/usage-band/frames/${ID}.json`
+  const done = { exitCode: 0, stderr: '', isStdoutTruncated: false, isStderrTruncated: false }
+  // `file` is the frame file; `after` runs once the band is mounted, with the clock and the file.
+  const cmd = (name: string, id: string | undefined, options: Record<string, string>, seed: string | undefined, steps: string[], check: (out: string[], s: string, file: () => string | undefined) => void | Promise<void>, between?: (clock: { advance(ms: number): Promise<void> }, set: (t: string) => void) => Promise<void>) =>
+    test(`${name}: ${steps.join(' | ')}`, { options } as never, async ($, on) => {
+      const clock = mock.clock(on as never, { now: NOW })
+      const o = on as unknown as (ev: string, fn: (...a: never[]) => unknown) => void
+      let file = seed
+      o('session.usage', () => ({ value: { startedAt: NOW - 3_600_000, context: { tokens: 1000, window: 1_000_000, percent: 1 }, cost: { usd: 1 }, rateLimits: [] } }))
+      o('session.turns', () => ({ value: 5 }))
+      o('session.id', () => ({ value: 'abc' }))
+      o('command.register', () => ({ value: undefined }))
+      o('session.start', ((_$: unknown, e: unknown) => e) as never)
+      o('env.get', ((_$: unknown, e: { name: string }) => ({ value: e.name === 'CLAUDE_CODE_ACCOUNT_UUID' ? id : e.name === 'HOME' ? '/home/me' : undefined })) as never)
+      o('process.run', ((_$: unknown, e: { argv: string[] }) => {
+        const a = e.argv
+        if (a[0] === 'cat' && a[1] === FILE) return { value: { ...done, exitCode: file === undefined ? 1 : 0, stdout: file ?? '' } }
+        if (a[0] === '/bin/sh' && a[4] === FILE) file = String(a[5])
+        if (a[0] === 'rm' && a[2] === FILE) file = undefined
+        return { value: { ...done, exitCode: a[0] === 'cat' ? 1 : 0, stdout: '' } }
+      }) as never)
+      await $.session.start({ cwd: '/p', surface: 'desktop', isInteractive: true } as never)
       const ui = await $.ui.mount({ plugin: 'usage-band', surface: 'desktop', ...BAND } as never)
       const out: string[] = []
       for (const args of steps) out.push(String((await $.command.run({ command: 'usage-band', args })).text))
-      check(out, JSON.stringify(await ui.drawn()))
+      if (between) await between(clock, t => (file = t))
+      await check(out, JSON.stringify(await ui.drawn()), () => file)
       await ui.unmount()
     })
-  cmd(ID, {}, ['frame blue WORK', 'frame'], (o, s) => {
-    expect(o[0]).toContain('Frame set')
+  cmd('writes the file', ID, {}, undefined, ['frame blue WORK', 'frame'], (o, s, file) => {
+    expect(o[0]).toBe('Frame set: #2563eb WORK')
     expect(o[1]).toContain('WORK')
+    expect(JSON.parse(file()!)).toEqual({ label: 'WORK', color: '#2563eb', side: 'right', at: NOW })
     expect(s).toContain('rotate(90)') // the band redraws with the right-hand label, no restart
     expect(s).toContain(`stroke=\\"${mix('#2563eb', 80, '#000000')}\\"`) // the border, in the strip color
   })
-  cmd(ID, {}, ['frame blue WORK', 'frame off', 'frame'], (o, s) => {
+  cmd('off removes the file', ID, {}, undefined, ['frame blue WORK', 'frame off', 'frame'], (o, s, file) => {
     expect(o[1]).toContain('removed')
     expect(o[2]).toContain('No frame set')
+    expect(file()).toBeUndefined()
     expect(s).not.toContain('rotate(')
   })
-  cmd(ID, { accountFrames: FRAMES }, ['frame green HOME'], (o, s) => {
-    expect(o[0]).toContain('accountFrames setting controls')
-    expect(s).not.toContain('HOME')
+  cmd('file beats option', ID, { accountFrames: FRAMES, accountLabel: 'left' }, JSON.stringify({ label: 'HOME', color: '#16a34a', side: 'right' }), [], (_o, s) => {
+    expect(s).toContain('HOME')
+    expect(s).toContain('rotate(90)')
+    expect(s).not.toContain('WORK')
   })
-  cmd(ID, {}, ['frame mauve WORK', 'frame red ABCDEFGHIJKLMNOPQ', 'bogus'], o => o.forEach(t => expect(t).toContain('/usage-band frame')))
-  cmd(undefined, {}, ['frame blue WORK'], o => expect(o[0]).toContain('no account id'))
+  cmd('a label-less frame keeps the label and hides the strip', ID, {}, JSON.stringify({ label: 'HOME', color: '#16a34a', side: 'right' }), ['frame orange'], (o, s, file) => {
+    expect(o[0]).toBe('Frame set: #ea580c, label off.')
+    expect(JSON.parse(file()!)).toMatchObject({ label: 'HOME', color: '#ea580c', side: 'off' })
+    expect(s).not.toContain('rotate(')
+    expect(s).toContain(`stroke=\\"${mix('#ea580c', 80, '#000000')}\\"`)
+  })
+  cmd('an external edit shows on the next poll', ID, {}, undefined, [], async (_o, s) => {
+    expect(s).toContain('HOME')
+    expect(s).toContain('rotate(-90)')
+  }, async (clock, set) => {
+    set(JSON.stringify({ label: 'HOME', color: '#16a34a', side: 'left' }))
+    await clock.advance(61_000)
+  })
+  cmd('an invalid file is ignored', ID, { accountFrames: FRAMES }, '{"label":"A:B","color":"#16a34a","side":"left"}', [], (_o, s) => {
+    expect(s).not.toContain('rotate(')
+    expect(s).not.toContain('A:B')
+  })
+  cmd('bad args', ID, {}, undefined, ['frame mauve WORK', 'frame red ABCDEFGHIJKLMNOPQ', 'bogus'], o => o.forEach(t => expect(t).toContain('/usage-band frame')))
+  cmd('no account id', undefined, {}, undefined, ['frame blue WORK'], o => expect(o[0]).toContain('no account id'))
 })
 
 for (const surface of ['terminal', 'desktop'] as const) {
