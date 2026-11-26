@@ -1,6 +1,6 @@
 {
   "name": "usage-band",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Pill band above the prompt: 5h/7d limits, tokens, context, compactions, agent time, cost, tests",
   "types": "./types/index.d.ts",
   "author": {
@@ -9,10 +9,10 @@
   "repository": "https://github.com/Esi-Abolfazl/skills",
   "license": "MIT",
   "userConfig": {
-    "accountTints": {
+    "accountFrames": {
       "type": "string",
-      "title": "Account tints",
-      "description": "Comma-separated accountId=LABEL:#wash[:#solid] entries (#solid colors the label strip, else #wash), e.g. 00000000-0000-0000-0000-000000000000=WORK:#3b82f6:#2563eb",
+      "title": "Account frames",
+      "description": "Comma-separated accountId=LABEL:#color[:#solid] entries (#solid colors the label strip, else #color), e.g. 00000000-0000-0000-0000-000000000000=WORK:#3b82f6:#2563eb",
       "default": ""
     },
     "accountLabel": {

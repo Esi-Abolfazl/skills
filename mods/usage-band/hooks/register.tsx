@@ -6,8 +6,8 @@ import { bandSvg, bandText, bandWidth, fmtSpan, fmtTokens, meterColor, slotPx } 
 import { NO_SCAN, SCAN_AWK, SCAN_SH, parseScan } from './scan'
 import { isCode, isTestCommand, testOutcome } from './testrun'
 import { ACCENT } from './cells'
-import { PANEL_PAD, SLOT_UNDER, STRIP_PX, TINT_USAGE, lookOf, panelSvg, parseTintArgs, parseTints, pickWithLabel } from './account'
-import type { Tints } from './account'
+import { PANEL_PAD, SLOT_UNDER, STRIP_PX, FRAME_USAGE, lookOf, panelSvg, parseFrameArgs, parseFrames, pickWithLabel } from './account'
+import type { Frames } from './account'
 import { VERSION } from './version'
 import { MODELS_AWK, MODELS_QUERY_AWK, MODELS_SESSION_AWK, MODELS_SH, PERIODS, SOURCES, parseQuery, windowStarts } from './models'
 import { costOf, stale as pricesStale } from './prices'
@@ -23,15 +23,15 @@ const down = new Set<string>()
 const RETRY_MS = 30_000
 const EMPTY: Stats = { transcript: '', scan: NO_SCAN, turnCosts: [] }
 // Reading it in a render subscribes that draw, so a `set` redraws the band.
-const tintsAtom = atom({ plugin: 'usage-band', key: 'tints' } as const, { loaded: false, tints: {} as Tints })
-const storedTints = async ($: EngineInterface): Promise<Tints> => {
-  const kept = await $.store.get('tints').catch(() => undefined)
-  return kept && typeof kept === 'object' ? (kept as Tints) : {}
+const framesAtom = atom({ plugin: 'usage-band', key: 'frames' } as const, { loaded: false, frames: {} as Frames })
+const storedFrames = async ($: EngineInterface): Promise<Frames> => {
+  const kept = await $.store.get('frames').catch(() => undefined)
+  return kept && typeof kept === 'object' ? (kept as Frames) : {}
 }
 // A render cannot write state, so before session.start has loaded the atom it reads the store itself.
-const loadTints = async ($: EngineInterface): Promise<Tints> => {
-  const a = await read($, tintsAtom)
-  return a.loaded ? a.tints : storedTints($)
+const loadFrames = async ($: EngineInterface): Promise<Frames> => {
+  const a = await read($, framesAtom)
+  return a.loaded ? a.frames : storedFrames($)
 }
 const stats = atom({ plugin: 'usage-band', key: 'stats' } as const, EMPTY)
 // A Stats kept by an older version lacks newer fields; the spread fills them in.
@@ -308,8 +308,8 @@ export const register: Register = (on, options) => {
       down.clear()
       $.ui.invalidate('ui.render')
     })
-    const tints = await storedTints($)
-    await update($, tintsAtom, () => ({ loaded: true, tints }))
+    const frames = await storedFrames($)
+    await update($, framesAtom, () => ({ loaded: true, frames }))
     await $.command.register({ name: 'usage-band', description: 'Open the usage details pane (limits, context, tokens, turns, tests)' })
     // The cost so far is the baseline the next turn's own cost is measured from.
     const usd = (await $.session.usage().catch(() => undefined))?.cost?.usd
@@ -330,29 +330,29 @@ export const register: Register = (on, options) => {
       await openDetails($)
       return { text: 'Usage details opened.' }
     }
-    if (verb !== 'frame') return { text: TINT_USAGE }
+    if (verb !== 'frame') return { text: FRAME_USAGE }
     const id = await $.env.get('CLAUDE_CODE_ACCOUNT_UUID').catch(() => undefined)
-    if (!id) return { text: `This window has no account id. ${TINT_USAGE}` }
-    // Fresh from the store: another window may have tinted its own account since this session loaded.
-    const tints = await storedTints($)
-    const mine = tints[id]
+    if (!id) return { text: `This window has no account id. ${FRAME_USAGE}` }
+    // Fresh from the store: another window may have framed its own account since this session loaded.
+    const frames = await storedFrames($)
+    const mine = frames[id]
     const word = rest.join(' ')
-    const managed = parseTints(typeof options?.accountTints === 'string' ? options.accountTints : '').has(id)
+    const managed = parseFrames(typeof options?.accountFrames === 'string' ? options.accountFrames : '').has(id)
     if (word === '') {
-      if (managed) return { text: 'The accountTints setting controls the frame of this window. ' + TINT_USAGE }
-      return { text: (mine ? `Frame: ${mine.color} ${mine.label}, label ${mine.side}.` : 'No frame set.') + ' ' + TINT_USAGE }
+      if (managed) return { text: 'The accountFrames setting controls the frame of this window. ' + FRAME_USAGE }
+      return { text: (mine ? `Frame: ${mine.color} ${mine.label}, label ${mine.side}.` : 'No frame set.') + ' ' + FRAME_USAGE }
     }
-    const next = { ...tints }
+    const next = { ...frames }
     if (word.toLowerCase() === 'off') delete next[id]
     else {
-      const t = parseTintArgs(word)
-      if (!t) return { text: TINT_USAGE }
+      const t = parseFrameArgs(word)
+      if (!t) return { text: FRAME_USAGE }
       next[id] = t
     }
-    await $.store.set('tints', next)
-    await update($, tintsAtom, () => ({ loaded: true, tints: next }))
+    await $.store.set('frames', next)
+    await update($, framesAtom, () => ({ loaded: true, frames: next }))
     const done = word.toLowerCase() === 'off' ? 'Frame removed.' : `Frame set: ${next[id]!.label}.`
-    return { text: managed ? `${done} The accountTints setting controls this window, so the change will not show.` : done }
+    return { text: managed ? `${done} The accountFrames setting controls this window, so the change will not show.` : done }
   })
 
   on('session.compact', async ($, e, next) => {
@@ -444,7 +444,7 @@ export const register: Register = (on, options) => {
     const table = $.ui.resolve(e)
     const { Box, Text } = table
     const opts = options ?? {}
-    const look = lookOf(await $.env.get('CLAUDE_CODE_ACCOUNT_UUID').catch(() => undefined), opts, await loadTints($))
+    const look = lookOf(await $.env.get('CLAUDE_CODE_ACCOUNT_UUID').catch(() => undefined), opts, await loadFrames($))
     // The panel is drawn larger by the host's padding and pulled out by one cell (Space is cells, not px;
     // shortcut: the desktop may ignore negative vertical margins, unverified).
     const room = (cols: number, strip: boolean) => slotPx(cols) + SLOT_UNDER - 2 * PANEL_PAD - (strip ? STRIP_PX - PANEL_PAD : 0)

@@ -5,8 +5,8 @@ export type Look = { account?: Account; labelSide: Side; whenWrapped: boolean }
 
 const ENTRY = /^\s*([^=,:\s]+)=([^:,\x00-\x1f]+):(#[0-9a-fA-F]{6})(?::(#[0-9a-fA-F]{6}))?\s*$/
 
-// `accountId=LABEL:#wash[:#solid],...` (#solid colors the strip, else #wash); an entry that does not match is skipped.
-export function parseTints(s: string | undefined): Map<string, Account> {
+// `accountId=LABEL:#color[:#solid],...` (#solid colors the strip, else #color); an entry that does not match is skipped.
+export function parseFrames(s: string | undefined): Map<string, Account> {
   const out = new Map<string, Account>()
   for (const part of (s ?? '').split(',')) {
     const m = ENTRY.exec(part)
@@ -16,18 +16,18 @@ export function parseTints(s: string | undefined): Map<string, Account> {
 }
 
 // What `/usage-band frame` keeps per account in the plugin store.
-export type StoredTint = { label: string; color: string; solid: string; side: Side }
-export type Tints = Record<string, StoredTint>
+export type StoredFrame = { label: string; color: string; solid: string; side: Side }
+export type Frames = Record<string, StoredFrame>
 
 const explicitSide = (v: unknown) => (v === 'left' || v === 'right' ? v : undefined)
 
-// The `accountTints` option wins over the stored entry. An option entry takes its side from `accountLabel`;
+// The `accountFrames` option wins over the stored entry. An option entry takes its side from `accountLabel`;
 // a stored entry from its own side, unless `accountLabel` is explicitly left or right.
-export function lookOf(id: string | undefined, o: { accountTints?: unknown; accountLabel?: unknown; accountLabelWhenWrapped?: unknown }, stored: Tints = {}): Look {
-  const opt = id ? parseTints(typeof o.accountTints === 'string' ? o.accountTints : '').get(id) : undefined
+export function lookOf(id: string | undefined, o: { accountFrames?: unknown; accountLabel?: unknown; accountLabelWhenWrapped?: unknown }, stored: Frames = {}): Look {
+  const opt = id ? parseFrames(typeof o.accountFrames === 'string' ? o.accountFrames : '').get(id) : undefined
   const kept = id && !opt && Object.hasOwn(stored, id) ? stored[id] : undefined
   // The store is a file anyone can edit: a kept entry is drawn only if it still parses.
-  const mine = kept ? parseTintArgs(`${kept.color} ${kept.label} ${kept.side}`) : undefined
+  const mine = kept ? parseFrameArgs(`${kept.color} ${kept.label} ${kept.side}`) : undefined
   const labelSide: Side = opt ? (explicitSide(o.accountLabel) ?? 'off') : mine ? (explicitSide(o.accountLabel) ?? mine.side) : (explicitSide(o.accountLabel) ?? 'off')
   return {
     account: opt ?? (mine && { label: mine.label, color: mine.color, solid: mine.solid }),
@@ -45,12 +45,12 @@ export const parseColor = (s: string): string | undefined => {
   return Object.hasOwn(PALETTE, t) ? PALETTE[t] : /^#[0-9a-f]{6}$/.test(t) ? t : undefined
 }
 
-export const TINT_USAGE = '/usage-band frame <color> <LABEL> [right|r|left|l|off] | /usage-band frame off | /usage-band frame. Colors: ' + Object.keys(PALETTE).join(', ') + ' or #rrggbb.'
+export const FRAME_USAGE = '/usage-band frame <color> <LABEL> [right|r|left|l|off] | /usage-band frame off | /usage-band frame. Colors: ' + Object.keys(PALETTE).join(', ') + ' or #rrggbb.'
 
 const SIDES: Record<string, Side> = { left: 'left', l: 'left', right: 'right', r: 'right', off: 'off' }
 
 // `<color> <LABEL> [side]` (the words after `frame`); undefined when it does not parse.
-export function parseTintArgs(rest: string): StoredTint | undefined {
+export function parseFrameArgs(rest: string): StoredFrame | undefined {
   const w = rest.trim().split(/\s+/).filter(Boolean)
   const side: Side = SIDES[w.at(-1)?.toLowerCase() ?? ''] ? SIDES[w.pop()!.toLowerCase()]! : 'right'
   const color = parseColor(w.shift() ?? '')

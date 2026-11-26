@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { lookOf, mix, panelSvg, parseColor, parseTintArgs, parseTints, pickWithLabel } from '../hooks/account'
+import { lookOf, mix, panelSvg, parseColor, parseFrameArgs, parseFrames, pickWithLabel } from '../hooks/account'
 
 const ID = '00000000-0000-0000-0000-000000000000'
-const TINTS = `${ID}=WORK:#3b82f6:#2563eb`
+const FRAMES = `${ID}=WORK:#3b82f6:#2563eb`
 const BAND = { component: 'AbovePrompt', props: { hasSurvey: false, isWorking: false, maxRows: 6, bodyColumns: 120, scroll: { offset: 0, bodyRows: 6 } } } as const
 const NOW = Date.parse('2026-10-16T12:00:00Z')
 
@@ -24,16 +24,16 @@ describe('panelSvg', () => {
   })
 })
 
-describe('parseTints', () => {
+describe('parseFrames', () => {
   test('valid, invalid and empty', () => {
-    expect(parseTints(`${TINTS}, other=HOME:#00FF00`).get(ID)).toEqual({ label: 'WORK', color: '#3b82f6', solid: '#2563eb' })
-    expect(parseTints(`${TINTS}, other=HOME:#00FF00`).get('other')?.color).toBe('#00ff00')
-    expect(parseTints(`${ID}=WORK:#3b82f6:#2563EB`).get(ID)).toEqual({ label: 'WORK', color: '#3b82f6', solid: '#2563eb' })
-    expect(parseTints(`${ID}=WORK:#3b82f6:blue`).size).toBe(0)
-    expect(parseTints(`${ID}=WORK:blue,${ID}=:#3b82f6,nonsense,${ID}=X:#3b82f`).size).toBe(0)
-    expect(parseTints(`${ID}=WO\u0001RK:#3b82f6`).size).toBe(0)
-    expect(parseTints('').size).toBe(0)
-    expect(parseTints(undefined).size).toBe(0)
+    expect(parseFrames(`${FRAMES}, other=HOME:#00FF00`).get(ID)).toEqual({ label: 'WORK', color: '#3b82f6', solid: '#2563eb' })
+    expect(parseFrames(`${FRAMES}, other=HOME:#00FF00`).get('other')?.color).toBe('#00ff00')
+    expect(parseFrames(`${ID}=WORK:#3b82f6:#2563EB`).get(ID)).toEqual({ label: 'WORK', color: '#3b82f6', solid: '#2563eb' })
+    expect(parseFrames(`${ID}=WORK:#3b82f6:blue`).size).toBe(0)
+    expect(parseFrames(`${ID}=WORK:blue,${ID}=:#3b82f6,nonsense,${ID}=X:#3b82f`).size).toBe(0)
+    expect(parseFrames(`${ID}=WO\u0001RK:#3b82f6`).size).toBe(0)
+    expect(parseFrames('').size).toBe(0)
+    expect(parseFrames(undefined).size).toBe(0)
   })
   test('mix is a solid 14% sRGB blend into the panel', () => {
     expect(mix('#2563eb')).toBe('#262f40')
@@ -43,26 +43,26 @@ describe('parseTints', () => {
     const fits = (max: number) => (g: number, strip: boolean) => g + (strip ? 1 : 0) <= max
     const all = [10, 8, 6]
     const rows = (g: number) => (g >= 8 ? 2 : 4) // 10 and 8 are one-line layouts, 6 wraps to 4 rows
-    const l = lookOf(ID, { accountTints: TINTS, accountLabel: 'left' })
+    const l = lookOf(ID, { accountFrames: FRAMES, accountLabel: 'left' })
     expect(pickWithLabel(l, all, fits(11), rows)).toEqual({ grid: 10, strip: true })
     expect(pickWithLabel(l, all, fits(10), rows)).toEqual({ grid: 8, strip: true }) // a narrower one-line layout keeps the label
     expect(pickWithLabel(l, all, fits(8), rows)).toEqual({ grid: 8, strip: false }) // the strip would force 4 rows: drop it
-    const show = lookOf(ID, { accountTints: TINTS, accountLabel: 'left', accountLabelWhenWrapped: 'show' })
+    const show = lookOf(ID, { accountFrames: FRAMES, accountLabel: 'left', accountLabelWhenWrapped: 'show' })
     expect(pickWithLabel(show, all, fits(8), rows)).toEqual({ grid: 6, strip: true })
-    expect(pickWithLabel(lookOf(ID, { accountTints: TINTS }), all, fits(99), rows).strip).toBe(false)
+    expect(pickWithLabel(lookOf(ID, { accountFrames: FRAMES }), all, fits(99), rows).strip).toBe(false)
   })
 })
 
-describe('stored tints', () => {
+describe('stored frames', () => {
   const stored = { [ID]: { label: 'HOME', color: '#16a34a', solid: '#12883c', side: 'right' as const } }
   test('the option wins over the stored entry and takes its side from accountLabel', () => {
-    const l = lookOf(ID, { accountTints: TINTS, accountLabel: 'left' }, stored)
+    const l = lookOf(ID, { accountFrames: FRAMES, accountLabel: 'left' }, stored)
     expect(l.account?.label).toBe('WORK')
     expect(l.labelSide).toBe('left')
-    expect(lookOf(ID, { accountTints: TINTS }, stored).labelSide).toBe('off')
+    expect(lookOf(ID, { accountFrames: FRAMES }, stored).labelSide).toBe('off')
   })
   test('a stored entry is used when the option lacks the id; its side shows unless accountLabel is left or right', () => {
-    const other = { accountTints: 'ffffffff-0000-0000-0000-000000000000=X:#3b82f6' }
+    const other = { accountFrames: 'ffffffff-0000-0000-0000-000000000000=X:#3b82f6' }
     expect(lookOf(ID, other, stored)).toMatchObject({ account: { label: 'HOME' }, labelSide: 'right' })
     expect(lookOf(ID, { ...other, accountLabel: 'off' }, stored).labelSide).toBe('right')
     expect(lookOf(ID, { ...other, accountLabel: 'left' }, stored).labelSide).toBe('left')
@@ -73,11 +73,11 @@ describe('stored tints', () => {
     expect(parseColor('#ABCDEF')).toBe('#abcdef')
     expect(parseColor('#abc')).toBeUndefined()
     expect(parseColor('toString')).toBeUndefined()
-    expect(parseTintArgs('blue WORK')).toEqual({ label: 'WORK', color: '#2563eb', solid: mix('#2563eb', 80, '#000000'), side: 'right' })
-    expect(parseTintArgs('#16a34a my work l')).toMatchObject({ label: 'my work', side: 'left' })
-    expect(parseTintArgs('blue WORK r')?.side).toBe('right')
-    expect(parseTintArgs('teal X off')?.side).toBe('off')
-    for (const bad of ['', 'WORK', 'WORK mauve', 'A:B red', 'A,B red', 'ABCDEFGHIJKLMNOPQ red', 'blue', 'WORK blue']) expect(parseTintArgs(bad)).toBeUndefined()
+    expect(parseFrameArgs('blue WORK')).toEqual({ label: 'WORK', color: '#2563eb', solid: mix('#2563eb', 80, '#000000'), side: 'right' })
+    expect(parseFrameArgs('#16a34a my work l')).toMatchObject({ label: 'my work', side: 'left' })
+    expect(parseFrameArgs('blue WORK r')?.side).toBe('right')
+    expect(parseFrameArgs('teal X off')?.side).toBe('off')
+    for (const bad of ['', 'WORK', 'WORK mauve', 'A:B red', 'A,B red', 'ABCDEFGHIJKLMNOPQ red', 'blue', 'WORK blue']) expect(parseFrameArgs(bad)).toBeUndefined()
   })
 })
 
@@ -108,8 +108,8 @@ describe('/usage-band frame', () => {
     expect(o[2]).toContain('No frame set')
     expect(s).not.toContain('rotate(')
   })
-  cmd(ID, { accountTints: TINTS }, ['frame green HOME'], (o, s) => {
-    expect(o[0]).toContain('accountTints setting controls')
+  cmd(ID, { accountFrames: FRAMES }, ['frame green HOME'], (o, s) => {
+    expect(o[0]).toContain('accountFrames setting controls')
     expect(s).not.toContain('HOME')
   })
   cmd(ID, {}, ['frame mauve WORK', 'frame red ABCDEFGHIJKLMNOPQ', 'bogus'], o => o.forEach(t => expect(t).toContain('/usage-band frame')))
@@ -129,16 +129,16 @@ for (const surface of ['terminal', 'desktop'] as const) {
       await ui.unmount()
     })
 
-  const cfg = { accountTints: TINTS, accountLabel: 'left' }
+  const cfg = { accountFrames: FRAMES, accountLabel: 'left' }
   // The desktop shows the account as a border in the strip color; the terminal as a wash.
   const mark = surface === 'desktop' ? 'stroke=\\"#2563eb\\"' : '#293341'
-  for (const id of [undefined, 'ffffffff-0000-0000-0000-000000000000']) run(`no tint or label for ${id ?? 'no account'}`, cfg, id, s => { expect(s).not.toContain(mark); expect(s).not.toContain('WORK') })
-  run('no tint: no panel, no zero-size boxes', {}, ID, s => {
+  for (const id of [undefined, 'ffffffff-0000-0000-0000-000000000000']) run(`no frame or label for ${id ?? 'no account'}`, cfg, id, s => { expect(s).not.toContain(mark); expect(s).not.toContain('WORK') })
+  run('no frame: no panel, no zero-size boxes', {}, ID, s => {
     if (surface === 'desktop') expect(s).not.toContain('rx=\\"12\\"')
     expect(s).not.toContain('"height":"0%"')
     expect(s).not.toContain('"width":"0%"')
   })
-  run('account tints the band', { accountTints: TINTS }, ID, s => { expect(s).toContain(mark); expect(s).not.toContain('WORK') })
+  run('account frames the band', { accountFrames: FRAMES }, ID, s => { expect(s).toContain(mark); expect(s).not.toContain('WORK') })
   for (const [side, rot] of [['left', 'rotate(-90)'], ['right', 'rotate(90)']]) run(`label ${side}`, { ...cfg, accountLabel: side }, ID, s => surface === 'desktop' ? (expect(s).toContain(rot), expect(s).toContain('fill=\\"#2563eb\\"')) : expect(s).toContain('"#2563eb"'))
   run('wrapped layout hides the label by default', cfg, ID, s => { expect(s).toContain(mark); expect(s).not.toContain('rotate(') ; expect(s).not.toContain('"backgroundColor":"#2563eb"') }, 29)
   run('wrapped layout keeps the label when set to show', { ...cfg, accountLabelWhenWrapped: 'show' }, ID, s => surface === 'desktop' ? expect(s).toContain('rotate(-90)') : expect(s).toContain('"#2563eb"'), 29)

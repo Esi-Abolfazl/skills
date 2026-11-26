@@ -136,13 +136,13 @@ The easy way is the command. Run it once in each window; the mod binds the frame
 
 The advanced way is three options, set in the plugin's config menu (useful if you sync settings):
 
-- `accountTints`: comma-separated `accountId=LABEL:#wash[:#solid]` entries. On the desktop the band gets a border in #solid when given, else #wash; the terminal band gets a panel washed with #wash at 14% into the panel color. The label strip uses the same color as the border. Default empty (no frame).
+- `accountFrames`: comma-separated `accountId=LABEL:#color[:#solid]` entries. On the desktop the band gets a border in #solid when given, else #color; the terminal band gets a panel washed with #color at 14% into the panel color. The label strip uses the same color as the border. Default empty (no frame).
 - `accountLabel`: `off` (default), `left` or `right`. Draws the label as a colored edge strip.
 - `accountLabelWhenWrapped`: `hide` (default) or `show`. With `hide`, the label shows while the band fits in 2 rows; when the label would push the band to 4 rows, it drops and the band uses the full width. `show` keeps it.
 
-Precedence: an `accountTints` entry for the window's account wins over the command's tint, and the command then says the setting controls this window. With an option entry, the label side comes from `accountLabel`. With a command tint, the side comes from the command, unless `accountLabel` is set to `left` or `right`, which wins. `accountLabelWhenWrapped` applies to both.
+Precedence: an `accountFrames` entry for the window's account wins over the command's frame, and the command then says the setting controls this window. With an option entry, the label side comes from `accountLabel`. With a command frame, the side comes from the command, unless `accountLabel` is set to `left` or `right`, which wins. `accountLabelWhenWrapped` applies to both.
 
-Examples: `00000000-0000-0000-0000-000000000000=WORK:#3b82f6` (strip in the wash color) and `00000000-0000-0000-0000-000000000000=WORK:#3b82f6:#2563eb` (strip in a separate solid color). The account id is `CLAUDE_CODE_ACCOUNT_UUID`, which the desktop app sets per session. An account with no entry gets the plain band. The label needs the desktop or mobile app for vertical text; the terminal shows a plain colored edge.
+Examples: `00000000-0000-0000-0000-000000000000=WORK:#3b82f6` (strip in the base color) and `00000000-0000-0000-0000-000000000000=WORK:#3b82f6:#2563eb` (strip in a separate solid color). The account id is `CLAUDE_CODE_ACCOUNT_UUID`, which the desktop app sets per session. An account with no entry gets the plain band. The label needs the desktop or mobile app for vertical text; the terminal shows a plain colored edge.
 
 Install in the Claude desktop app, no terminal needed (the app keeps itself up to date):
 

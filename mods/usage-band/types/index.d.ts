@@ -46,6 +46,6 @@ export type Stats = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'usage-band': { stats: Stats; tints: { loaded: boolean; tints: Record<string, { label: string; color: string; solid: string; side: 'off' | 'left' | 'right' }> } }
+    'usage-band': { stats: Stats; frames: { loaded: boolean; frames: Record<string, { label: string; color: string; solid: string; side: 'off' | 'left' | 'right' }> } }
   }
 }
